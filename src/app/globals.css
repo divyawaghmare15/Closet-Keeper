@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f0fa;
+  --foreground: #2d2640;
+  --surface: #faf7fd;
+  --surface-elevated: #ffffff;
+  --accent: #7b6ab8;
+  --accent-soft: #ede6f8;
+  --muted: #7a7190;
+  --border: #d9d0e8;
+  --wash: #9a6b8a;
+  --wash-soft: #f3e8ef;
+  --hero-glow: #e4d9f5;
+  --hero-mist: #ddd2f0;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-wash: var(--wash);
+  --color-wash-soft: var(--wash-soft);
+  --font-sans: var(--font-closet-sans);
+  --font-display: var(--font-closet-display);
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(ellipse 100% 70% at 50% -10%, var(--hero-glow) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 50% at 100% 20%, var(--hero-mist) 0%, transparent 45%),
+    linear-gradient(180deg, #ebe4f6 0%, var(--background) 42%, #f8f5fc 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, sans-serif;
+}
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+summary,
+select,
+label[for],
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"],
+input[type="submit"],
+input[type="button"],
+input[type="reset"] {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"],
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
+}
+
+.animate-modal-in {
+  animation: modal-in 0.3s ease-out both;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 5s ease-in-out infinite;
 }
