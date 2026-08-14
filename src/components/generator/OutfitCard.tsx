@@ -37,13 +37,20 @@ export function OutfitCard({
         {outfit.items.map((item) => (
           <div
             key={item.id}
-            className="relative aspect-[3/4] bg-accent-soft/30 sm:aspect-auto sm:min-h-[220px]"
+            className="relative aspect-[3/4] overflow-hidden bg-accent-soft/30 sm:aspect-auto sm:min-h-[220px]"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={item.imageUrl}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.imageUrl}
               alt={item.title}
-              className="h-full w-full object-cover"
+              className="relative z-10 h-full w-full object-contain"
             />
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/60 to-transparent px-3 pb-3 pt-10">
               <p className="truncate text-sm font-semibold text-white">
@@ -67,10 +74,15 @@ export function OutfitCard({
             <p className="text-sm text-muted">
               {outfit.items.length} piece
               {outfit.items.length === 1 ? '' : 's'}
-              {typeof outfit.matchScore === 'number'
+              {typeof outfit.matchScore === 'number' && !outfit.reason
                 ? ` · score ${Math.round(outfit.matchScore)}`
                 : ''}
             </p>
+            {outfit.reason && (
+              <p className="mt-1 text-sm leading-relaxed text-muted">
+                {outfit.reason}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {outfit.isFavorite && <Badge variant="category">Favorite</Badge>}

@@ -43,16 +43,137 @@ function sanitize(result: AutoTagResult): AutoTagResult {
   };
 }
 
+function taggingPrompt() {
+  return `Identify the clothing item in this photo. Reply with JSON only:
+{
+  "title": "short descriptive name",
+  "category": one of ${JSON.stringify(CATEGORIES)},
+  "color": one of ${JSON.stringify(COLORS)},
+  "occasions": array from ${JSON.stringify(OCCASIONS)},
+  "season": one of ${JSON.stringify(SEASONS)},
+  "brand": "brand if visible else empty string"
+}`;
+}
+
+function parseDataUrl(image: string): { mime: string; data: string } | null {
+  const match = image.match(/^data:(image\/[\w+.-]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mime: match[1], data: match[2] };
+}
+
+async function tagWithGemini(image: string): Promise<AutoTagResult | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const parsedImage = parseDataUrl(image);
+  if (!parsedImage) {
+    throw new Error('Image must be a data URL for Gemini');
+  }
+
+  const models = [
+    process.env.GEMINI_VISION_MODEL,
+    'gemini-flash-latest',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+  ].filter((value, index, list): value is string =>
+    Boolean(value) && list.indexOf(value) === index,
+  );
+
+  let lastError = 'Gemini request failed';
+
+  for (const model of models) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: taggingPrompt() },
+                {
+                  inline_data: {
+                    mime_type: parsedImage.mime,
+                    data: parsedImage.data,
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: 'application/json',
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      lastError = `Gemini ${model}: ${await response.text()}`;
+      continue;
+    }
+
+    const payload = (await response.json()) as {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+      }>;
+    };
+    const content = payload.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const parsed = parseJsonLoose(content);
+    if (parsed) return parsed;
+    lastError = `Gemini ${model} returned unreadable JSON`;
+  }
+
+  throw new Error(lastError);
+}
+
+async function tagWithOpenAI(image: string): Promise<AutoTagResult | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_VISION_MODEL || 'gpt-4o-mini',
+      temperature: 0.2,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: taggingPrompt() },
+            { type: 'image_url', image_url: { url: image } },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI failed: ${await response.text()}`);
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  return parseJsonLoose(payload.choices?.[0]?.message?.content ?? '');
+}
+
 /**
- * Vision auto-tag via OpenAI when OPENAI_API_KEY is set.
- * Without a key, returns 501 for client-side heuristic fallback.
+ * Vision auto-tag: Gemini (GEMINI_API_KEY) first, then OpenAI.
+ * Without either key, returns 501 for client-side heuristic fallback.
  */
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+  const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
 
-  if (!apiKey) {
+  if (!hasGemini && !hasOpenAI) {
     return NextResponse.json(
-      { error: 'OPENAI_API_KEY not configured' },
+      { error: 'GEMINI_API_KEY or OPENAI_API_KEY not configured' },
       { status: 501 },
     );
   }
@@ -63,54 +184,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing image' }, { status: 400 });
     }
 
-    const prompt = `Identify the clothing item in this photo. Reply with JSON only:
-{
-  "title": "short descriptive name",
-  "category": one of ${JSON.stringify(CATEGORIES)},
-  "color": one of ${JSON.stringify(COLORS)},
-  "occasions": array from ${JSON.stringify(OCCASIONS)},
-  "season": one of ${JSON.stringify(SEASONS)},
-  "brand": "brand if visible else empty string"
-}`;
+    let parsed: AutoTagResult | null = null;
+    let lastError = '';
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_VISION_MODEL || 'gpt-4o-mini',
-        temperature: 0.2,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: body.image } },
-            ],
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const detail = await response.text();
-      return NextResponse.json(
-        { error: 'Vision API failed', detail },
-        { status: 502 },
-      );
+    if (hasGemini) {
+      try {
+        parsed = await tagWithGemini(body.image);
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : 'Gemini failed';
+      }
     }
 
-    const payload = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = payload.choices?.[0]?.message?.content ?? '';
-    const parsed = parseJsonLoose(content);
+    if (!parsed && hasOpenAI) {
+      try {
+        parsed = await tagWithOpenAI(body.image);
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : 'OpenAI failed';
+      }
+    }
 
     if (!parsed) {
       return NextResponse.json(
-        { error: 'Could not parse vision response' },
+        { error: 'Could not parse vision response', detail: lastError },
         { status: 502 },
       );
     }

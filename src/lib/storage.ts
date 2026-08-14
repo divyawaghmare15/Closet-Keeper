@@ -7,6 +7,12 @@ import {
   saveCapsule,
 } from '@/lib/capsulesRepository';
 import {
+  deleteMiscCard,
+  getMiscCards,
+  importLocalMiscCardsToCloud,
+  saveMiscCard,
+} from '@/lib/miscRepository';
+import {
   deleteItem,
   getItems,
   importLocalItemsToCloud,
@@ -52,21 +58,30 @@ export {
   importLocalCapsulesToCloud,
 };
 
+export {
+  getMiscCards,
+  saveMiscCard,
+  deleteMiscCard,
+  importLocalMiscCardsToCloud,
+};
+
 export type LocalImportResult = {
   items: number;
   outfits: number;
   capsules: number;
+  miscCards: number;
 };
 
 /** Push all local browser data into the signed-in cloud account. */
 export async function importAllLocalToCloud(): Promise<LocalImportResult> {
-  const [items, outfits, capsules] = await Promise.all([
+  const [items, outfits, capsules, miscCards] = await Promise.all([
     importLocalItemsToCloud(),
     importLocalOutfitsToCloud(),
     importLocalCapsulesToCloud(),
+    importLocalMiscCardsToCloud(),
   ]);
 
-  return { items, outfits, capsules };
+  return { items, outfits, capsules, miscCards };
 }
 
 export type { ClothingItem, Outfit };

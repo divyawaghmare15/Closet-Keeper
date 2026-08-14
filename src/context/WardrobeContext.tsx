@@ -15,16 +15,20 @@ import {
 } from '@/lib/localItems';
 import {
   clearLocalCapsules,
+  clearLocalMiscCards,
   clearLocalOutfits,
   countLocalCapsules,
+  countLocalMiscCards,
   countLocalOutfits,
 } from '@/lib/localLooks';
 import {
   deleteCapsule as deleteCapsuleFromStorage,
   deleteItem as deleteItemFromStorage,
+  deleteMiscCard as deleteMiscCardFromStorage,
   deleteOutfit as deleteOutfitFromStorage,
   getCapsules,
   getItems,
+  getMiscCards,
   getSavedOutfits,
   importAllLocalToCloud,
   markItemsWorn as markItemsWornInStorage,
@@ -32,6 +36,7 @@ import {
   saveCapsule as saveCapsuleToStorage,
   saveItem as saveItemToStorage,
   saveItems as saveItemsToStorage,
+  saveMiscCard as saveMiscCardToStorage,
   saveOutfit as saveOutfitToStorage,
   toggleCleanStatus as toggleCleanStatusInStorage,
   toggleOutfitFavorite as toggleOutfitFavoriteInStorage,
@@ -42,6 +47,7 @@ import type {
   Capsule,
   ClothingItem,
   FilterState,
+  MiscCard,
   Outfit,
 } from '@/types';
 
@@ -57,6 +63,7 @@ interface WardrobeContextValue {
   items: ClothingItem[];
   savedOutfits: Outfit[];
   capsules: Capsule[];
+  miscCards: MiscCard[];
   filters: FilterState;
   setFilters: (
     filters: FilterState | ((prev: FilterState) => FilterState),
@@ -67,6 +74,7 @@ interface WardrobeContextValue {
   localItemCount: number;
   localOutfitCount: number;
   localCapsuleCount: number;
+  localMiscCount: number;
   saveItem: (item: ClothingItem) => Promise<ClothingItem>;
   saveItems: (items: ClothingItem[]) => Promise<ClothingItem[]>;
   deleteItem: (id: string) => Promise<boolean>;
@@ -77,6 +85,8 @@ interface WardrobeContextValue {
   toggleOutfitFavorite: (id: string) => Promise<Outfit | null>;
   saveCapsule: (capsule: Capsule) => Promise<Capsule>;
   deleteCapsule: (id: string) => Promise<boolean>;
+  saveMiscCard: (card: MiscCard) => Promise<MiscCard>;
+  deleteMiscCard: (id: string) => Promise<boolean>;
   importLocalToCloud: () => Promise<LocalImportResult>;
   filteredItems: ClothingItem[];
   resolveOutfit: (outfit: Outfit) => Outfit;
@@ -138,34 +148,40 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ClothingItem[]>([]);
   const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
   const [capsules, setCapsules] = useState<Capsule[]>([]);
+  const [miscCards, setMiscCards] = useState<MiscCard[]>([]);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [localItemCount, setLocalItemCount] = useState(0);
   const [localOutfitCount, setLocalOutfitCount] = useState(0);
   const [localCapsuleCount, setLocalCapsuleCount] = useState(0);
+  const [localMiscCount, setLocalMiscCount] = useState(0);
 
   const cloudEnabled = usesCloudWardrobe();
 
   const refresh = useCallback(async () => {
     setError('');
     try {
-      const [nextItems, nextOutfits, nextCapsules] = await Promise.all([
+      const [nextItems, nextOutfits, nextCapsules, nextMisc] = await Promise.all([
         getItems(),
         getSavedOutfits(),
         getCapsules(),
+        getMiscCards(),
       ]);
       setItems(nextItems);
       setSavedOutfits(nextOutfits);
       setCapsules(nextCapsules);
+      setMiscCards(nextMisc);
       setLocalItemCount(countLocalItems());
       setLocalOutfitCount(countLocalOutfits());
       setLocalCapsuleCount(countLocalCapsules());
+      setLocalMiscCount(countLocalMiscCards());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load wardrobe');
       setItems([]);
       setSavedOutfits([]);
       setCapsules([]);
+      setMiscCards([]);
     } finally {
       setLoading(false);
     }
@@ -242,11 +258,24 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
     return deleted;
   }
 
+  async function saveMiscCard(card: MiscCard): Promise<MiscCard> {
+    const saved = await saveMiscCardToStorage(card);
+    await refresh();
+    return saved;
+  }
+
+  async function deleteMiscCard(id: string): Promise<boolean> {
+    const deleted = await deleteMiscCardFromStorage(id);
+    if (deleted) await refresh();
+    return deleted;
+  }
+
   async function importLocalToCloud(): Promise<LocalImportResult> {
     const result = await importAllLocalToCloud();
     if (result.items > 0) clearLocalItems();
     if (result.outfits > 0) clearLocalOutfits();
     if (result.capsules > 0) clearLocalCapsules();
+    if (result.miscCards > 0) clearLocalMiscCards();
     await refresh();
     return result;
   }
@@ -264,6 +293,7 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
     items,
     savedOutfits,
     capsules,
+    miscCards,
     filters,
     setFilters,
     loading,
@@ -272,6 +302,7 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
     localItemCount,
     localOutfitCount,
     localCapsuleCount,
+    localMiscCount,
     saveItem,
     saveItems,
     deleteItem,
@@ -282,6 +313,8 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
     toggleOutfitFavorite,
     saveCapsule,
     deleteCapsule,
+    saveMiscCard,
+    deleteMiscCard,
     importLocalToCloud,
     filteredItems: applyFilters(items, filters),
     resolveOutfit,

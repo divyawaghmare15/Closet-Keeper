@@ -68,15 +68,8 @@ export function ImageUploader({
   }
 
   async function finishProcessed(source: string) {
-    setBusy('Softening background…');
-    let softened = source;
-    try {
-      softened = await softenBackground(source);
-    } catch {
-      softened = source;
-    }
     setBusy('Compressing…');
-    const compressed = await compressDataUrl(softened);
+    const compressed = await compressDataUrl(source);
     onChange(compressed);
     onProcessed?.(compressed);
   }
@@ -111,14 +104,13 @@ export function ImageUploader({
     }
   }
 
-  async function reSoftBackground() {
+  async function softenOnDemand() {
     if (!imageUrl) return;
     try {
       setBusy('Softening background…');
       const softened = await softenBackground(imageUrl);
       const compressed = await compressDataUrl(softened);
       onChange(compressed);
-      onProcessed?.(compressed);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not soften background',
@@ -130,18 +122,8 @@ export function ImageUploader({
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="mb-2">
         <p className="text-sm font-semibold">Photo</p>
-        {imageUrl && (
-          <button
-            type="button"
-            onClick={() => void reSoftBackground()}
-            disabled={Boolean(busy)}
-            className="text-xs font-semibold text-accent hover:underline disabled:opacity-50"
-          >
-            Soften background
-          </button>
-        )}
       </div>
 
       <div
@@ -207,6 +189,17 @@ export function ImageUploader({
           </button>
         )}
       </div>
+
+      {imageUrl && (
+        <button
+          type="button"
+          onClick={() => void softenOnDemand()}
+          disabled={Boolean(busy)}
+          className="mt-2 w-full rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
+        >
+          Soften background
+        </button>
+      )}
 
       {error && (
         <p className="mt-2 text-sm text-red-700" role="alert">

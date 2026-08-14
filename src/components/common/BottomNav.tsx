@@ -72,27 +72,45 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/capsule',
-    label: 'Capsule',
+    href: '/misc',
+    label: 'Extras',
     icon: (
       <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
-        <path
-          d="M7 4h10l1 4H6l1-4Z"
+        <rect
+          x="4"
+          y="5"
+          width="7"
+          height="7"
+          rx="1.5"
           stroke="currentColor"
           strokeWidth="1.75"
-          strokeLinejoin="round"
         />
-        <path
-          d="M6 8h12v11a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V8Z"
+        <rect
+          x="13"
+          y="5"
+          width="7"
+          height="7"
+          rx="1.5"
           stroke="currentColor"
           strokeWidth="1.75"
-          strokeLinejoin="round"
         />
-        <path
-          d="M10 12h4"
+        <rect
+          x="4"
+          y="14"
+          width="7"
+          height="5"
+          rx="1.5"
           stroke="currentColor"
           strokeWidth="1.75"
-          strokeLinecap="round"
+        />
+        <rect
+          x="13"
+          y="14"
+          width="7"
+          height="5"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.75"
         />
       </svg>
     ),

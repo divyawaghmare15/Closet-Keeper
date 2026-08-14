@@ -30,7 +30,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 ### 5. Use the app
 1. Open http://localhost:3000/auth and create an account.
-2. Add items, save outfits, save capsules — all sync to Supabase.
+2. Add items, save outfits, save extras cards — all sync to Supabase.
 3. If you still have browser-only data, use the banner **Import to cloud**.
 
 ---
@@ -39,13 +39,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 Run only this file in SQL Editor:
 
-**`supabase/schema-outfits-capsules.sql`**
+**`supabase/schema-outfits-capsules.sql`** then **`supabase/schema-misc.sql`**
 
 Then refresh the app (signed in) and:
-1. Save an outfit from **Outfits → Ideas → Save outfit**
+1. Save an outfit from **Outfits → Make outfit → Save outfit**
 2. Check Table Editor → **`saved_outfits`**
-3. Save a capsule from **Capsule**
-4. Check Table Editor → **`capsules`**
+3. Save an extras card from **Extras**
+4. Check Table Editor → **`misc_cards`**
 
 ---
 
@@ -57,4 +57,5 @@ Then refresh the app (signed in) and:
 | Photos | Storage bucket `clothing-images` |
 | Saved outfits | `saved_outfits` |
 | Capsules | `capsules` |
+| Extras cards | `misc_cards` |
 | Login | Supabase Auth |

@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { href: '/wardrobe', label: 'Wardrobe' },
   { href: '/add-item', label: 'Add' },
   { href: '/generator', label: 'Outfits' },
-  { href: '/capsule', label: 'Capsule' },
+  { href: '/misc', label: 'Extras' },
 ] as const;
 
 export function Header() {

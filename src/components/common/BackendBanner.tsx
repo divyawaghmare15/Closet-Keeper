@@ -12,12 +12,14 @@ export function BackendBanner() {
     localItemCount,
     localOutfitCount,
     localCapsuleCount,
+    localMiscCount,
     importLocalToCloud,
   } = useWardrobe();
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState('');
 
-  const localTotal = localItemCount + localOutfitCount + localCapsuleCount;
+  const localTotal =
+    localItemCount + localOutfitCount + localCapsuleCount + localMiscCount;
 
   if (!cloudEnabled) {
     return (
@@ -41,7 +43,7 @@ export function BackendBanner() {
         <Link href="/auth" className="font-semibold text-accent hover:underline">
           Sign in
         </Link>{' '}
-        to sync items, outfits, and capsules in the cloud.
+        to sync items, outfits, and extras in the cloud.
       </div>
     );
   }
@@ -57,6 +59,9 @@ export function BackendBanner() {
       localCapsuleCount > 0
         ? `${localCapsuleCount} capsule${localCapsuleCount === 1 ? '' : 's'}`
         : null,
+      localMiscCount > 0
+        ? `${localMiscCount} extra card${localMiscCount === 1 ? '' : 's'}`
+        : null,
     ].filter(Boolean);
 
     return (
@@ -71,10 +76,13 @@ export function BackendBanner() {
             void importLocalToCloud()
               .then((result) => {
                 const total =
-                  result.items + result.outfits + result.capsules;
+                  result.items +
+                  result.outfits +
+                  result.capsules +
+                  result.miscCards;
                 setImportMessage(
                   total > 0
-                    ? `Imported ${result.items} items, ${result.outfits} outfits, ${result.capsules} capsules.`
+                    ? `Imported ${result.items} items, ${result.outfits} outfits, ${result.miscCards} extras.`
                     : 'Nothing to import.',
                 );
               })

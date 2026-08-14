@@ -3,6 +3,8 @@ import type {
   Category,
   ClothingItem,
   Color,
+  MiscCard,
+  MiscPiece,
   Occasion,
   Outfit,
   Season,
@@ -117,6 +119,7 @@ export function normalizeOutfit(value: unknown): Outfit | null {
     createdDate: outfit.createdDate,
     matchScore:
       typeof outfit.matchScore === 'number' ? outfit.matchScore : undefined,
+    reason: typeof outfit.reason === 'string' ? outfit.reason : undefined,
   };
 }
 
@@ -147,5 +150,66 @@ export function normalizeCapsule(value: unknown): Capsule | null {
     targetCount: capsule.targetCount,
     notes: typeof capsule.notes === 'string' ? capsule.notes : '',
     createdDate: capsule.createdDate,
+  };
+}
+
+export function normalizeMiscPiece(value: unknown): MiscPiece | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const piece = value as Record<string, unknown>;
+
+  if (
+    typeof piece.id !== 'string' ||
+    typeof piece.title !== 'string' ||
+    typeof piece.imageUrl !== 'string'
+  ) {
+    return null;
+  }
+
+  const quantity =
+    typeof piece.quantity === 'number' &&
+    Number.isFinite(piece.quantity) &&
+    piece.quantity > 0
+      ? Math.round(piece.quantity)
+      : 1;
+
+  return {
+    id: piece.id,
+    title: piece.title,
+    imageUrl: piece.imageUrl,
+    notes: typeof piece.notes === 'string' ? piece.notes : '',
+    quantity,
+  };
+}
+
+export function normalizeMiscCard(value: unknown): MiscCard | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const card = value as Record<string, unknown>;
+
+  if (
+    typeof card.id !== 'string' ||
+    typeof card.title !== 'string' ||
+    typeof card.createdDate !== 'string'
+  ) {
+    return null;
+  }
+
+  const pieces = Array.isArray(card.pieces)
+    ? card.pieces
+        .map(normalizeMiscPiece)
+        .filter((piece): piece is MiscPiece => piece !== null)
+    : [];
+
+  const coverImageUrl =
+    typeof card.coverImageUrl === 'string' ? card.coverImageUrl : '';
+
+  return {
+    id: card.id,
+    title: card.title,
+    coverImageUrl,
+    notes: typeof card.notes === 'string' ? card.notes : '',
+    pieces,
+    createdDate: card.createdDate,
+    updatedDate:
+      typeof card.updatedDate === 'string' ? card.updatedDate : card.createdDate,
   };
 }

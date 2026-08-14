@@ -64,6 +64,20 @@ export interface Outfit {
   isFavorite: boolean;
   createdDate: string;
   matchScore?: number;
+  reason?: string;
+}
+
+/** Closet snapshot sent to the outfit suggester (no photos). */
+export interface OutfitCatalogItem {
+  id: string;
+  title: string;
+  category: Category;
+  color: Color;
+  occasions: Occasion[];
+  season: Season;
+  isClean: boolean;
+  daysSinceWorn: number | null;
+  brand: string;
 }
 
 export interface Capsule {
@@ -75,6 +89,24 @@ export interface Capsule {
   targetCount: number;
   notes: string;
   createdDate: string;
+}
+
+export interface MiscPiece {
+  id: string;
+  title: string;
+  imageUrl: string;
+  notes: string;
+  quantity: number;
+}
+
+export interface MiscCard {
+  id: string;
+  title: string;
+  coverImageUrl: string;
+  notes: string;
+  pieces: MiscPiece[];
+  createdDate: string;
+  updatedDate: string;
 }
 
 export interface FilterState {

@@ -1,11 +1,13 @@
-import type { Capsule, ClothingItem, Outfit } from '@/types';
+import type { Capsule, ClothingItem, MiscCard, Outfit } from '@/types';
 import {
   normalizeCapsule,
+  normalizeMiscCard,
   normalizeOutfit,
 } from '@/lib/storageNormalize';
 
 const OUTFITS_KEY = 'closet-keeper:outfits';
 const CAPSULES_KEY = 'closet-keeper:capsules';
+const MISC_KEY = 'closet-keeper:misc-cards';
 
 function canUseStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -130,6 +132,46 @@ export function clearLocalCapsules(): void {
 
 export function countLocalCapsules(): number {
   return getLocalCapsules().length;
+}
+
+export function getLocalMiscCards(): MiscCard[] {
+  return readJson(MISC_KEY, normalizeMiscCard);
+}
+
+export function saveLocalMiscCard(card: MiscCard): MiscCard {
+  const normalized = normalizeMiscCard(card);
+  if (!normalized) {
+    throw new Error('Invalid misc card schema');
+  }
+
+  const cards = getLocalMiscCards();
+  const index = cards.findIndex((existing) => existing.id === normalized.id);
+
+  if (index === -1) {
+    cards.unshift(normalized);
+  } else {
+    cards[index] = normalized;
+  }
+
+  writeJson(MISC_KEY, cards);
+  return normalized;
+}
+
+export function deleteLocalMiscCard(id: string): boolean {
+  const cards = getLocalMiscCards();
+  const next = cards.filter((card) => card.id !== id);
+  if (next.length === cards.length) return false;
+  writeJson(MISC_KEY, next);
+  return true;
+}
+
+export function clearLocalMiscCards(): void {
+  if (!canUseStorage()) return;
+  window.localStorage.removeItem(MISC_KEY);
+}
+
+export function countLocalMiscCards(): number {
+  return getLocalMiscCards().length;
 }
 
 export function resolveOutfitItems(

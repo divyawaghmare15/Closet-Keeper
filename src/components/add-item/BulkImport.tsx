@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useWardrobe } from '@/context/WardrobeContext';
-import { autoTagFromImageLocal } from '@/lib/autoTag';
+import { autoTagFromImage } from '@/lib/autoTag';
 import { CATEGORIES, COLORS, OCCASIONS, SEASONS } from '@/lib/constants';
 import { compressDataUrl, fileToDataUrl } from '@/lib/imageProcess';
 import type {
@@ -26,28 +26,16 @@ interface DraftItem {
   error?: string;
 }
 
-const BULK_CONCURRENCY = 3;
+type QueueJob = {
+  file: File;
+  localId: string;
+  fallbackTitle: string;
+};
 
-async function mapPool<T>(
-  items: T[],
-  concurrency: number,
-  worker: (item: T, index: number) => Promise<void>,
-) {
-  let next = 0;
-  async function run() {
-    while (next < items.length) {
-      const index = next;
-      next += 1;
-      await worker(items[index], index);
-      // Let the UI paint between items
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
-  }
-  const runners = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    () => run(),
-  );
-  await Promise.all(runners);
+const ITEM_DELAY_MS = 700;
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function BulkImport({
@@ -59,19 +47,23 @@ export function BulkImport({
 }) {
   const { saveItems } = useWardrobe();
   const inputRef = useRef<HTMLInputElement>(null);
+  const queueRef = useRef<QueueJob[]>([]);
+  const runningRef = useRef(false);
   const [drafts, setDrafts] = useState<DraftItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
   const bootstrapped = useRef(false);
 
   useEffect(() => {
     if (bootstrapped.current || initialFiles.length === 0) return;
     bootstrapped.current = true;
-    void processFiles(initialFiles);
+    enqueueFiles(initialFiles);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstrap once from gallery multi-select
   }, [initialFiles]);
 
-  async function processFiles(files: File[]) {
+  function enqueueFiles(files: File[]) {
     const imageFiles = files.filter((file) => file.type.startsWith('image/'));
     if (!imageFiles.length) return;
 
@@ -87,57 +79,95 @@ export function BulkImport({
       status: 'processing',
     }));
 
+    queueRef.current.push(
+      ...placeholders.map((placeholder, index) => ({
+        file: imageFiles[index],
+        localId: placeholder.localId,
+        fallbackTitle: placeholder.title,
+      })),
+    );
+
     setDrafts((prev) => [...placeholders, ...prev]);
+    setProgress((prev) => ({
+      done: prev.done,
+      total: prev.total + placeholders.length,
+    }));
+    void pumpQueue();
+  }
+
+  async function pumpQueue() {
+    if (runningRef.current) return;
+    runningRef.current = true;
     setProcessing(true);
 
-    try {
-      await mapPool(imageFiles, BULK_CONCURRENCY, async (file, index) => {
-        const localId = placeholders[index].localId;
-        const fallbackTitle = placeholders[index].title;
-        try {
-          // Fast path: compress only (skip ML background soften — too heavy for bulk)
-          const raw = await fileToDataUrl(file);
-          const compressed = await compressDataUrl(raw);
-          const tags = await autoTagFromImageLocal(compressed, fallbackTitle);
+    while (queueRef.current.length > 0) {
+      const job = queueRef.current.shift();
+      if (!job) break;
+      await processOne(job);
+      if (queueRef.current.length > 0) {
+        await delay(ITEM_DELAY_MS);
+      }
+    }
 
-          setDrafts((prev) =>
-            prev.map((draft) =>
-              draft.localId === localId
-                ? {
-                    ...draft,
-                    imageUrl: compressed,
-                    title: tags.title || draft.title,
-                    category: tags.category || draft.category,
-                    color: tags.color || draft.color,
-                    occasions: tags.occasions?.length
-                      ? tags.occasions
-                      : draft.occasions,
-                    season: tags.season || draft.season,
-                    brand: tags.brand || '',
-                    status: 'ready',
-                  }
-                : draft,
-            ),
-          );
-        } catch (error) {
-          setDrafts((prev) =>
-            prev.map((draft) =>
-              draft.localId === localId
-                ? {
-                    ...draft,
-                    status: 'error',
-                    error:
-                      error instanceof Error
-                        ? error.message
-                        : 'Failed to process',
-                  }
-                : draft,
-            ),
-          );
-        }
-      });
+    runningRef.current = false;
+    setProcessing(false);
+  }
+
+  async function processOne(job: QueueJob) {
+    try {
+      const raw = await fileToDataUrl(job.file);
+      const compressed = await compressDataUrl(raw);
+      let tags;
+      try {
+        tags = await autoTagFromImage(compressed);
+      } catch {
+        tags = {
+          title: job.fallbackTitle,
+          category: 'Top' as const,
+          color: 'Black' as const,
+          occasions: ['Casual' as const],
+          season: 'All-Season' as const,
+          brand: '',
+        };
+      }
+
+      setDrafts((prev) =>
+        prev.map((draft) =>
+          draft.localId === job.localId
+            ? {
+                ...draft,
+                imageUrl: compressed,
+                title: tags.title || draft.title,
+                category: tags.category || draft.category,
+                color: tags.color || draft.color,
+                occasions: tags.occasions?.length
+                  ? tags.occasions
+                  : draft.occasions,
+                season: tags.season || draft.season,
+                brand: tags.brand || '',
+                status: 'ready',
+              }
+            : draft,
+        ),
+      );
+    } catch (error) {
+      setDrafts((prev) =>
+        prev.map((draft) =>
+          draft.localId === job.localId
+            ? {
+                ...draft,
+                status: 'error',
+                error:
+                  error instanceof Error ? error.message : 'Failed to process',
+              }
+            : draft,
+        ),
+      );
     } finally {
-      setProcessing(false);
+      setProgress((prev) => ({
+        ...prev,
+        done: Math.min(prev.total, prev.done + 1),
+      }));
     }
   }
 
@@ -150,6 +180,9 @@ export function BulkImport({
   }
 
   function removeDraft(localId: string) {
+    queueRef.current = queueRef.current.filter(
+      (job) => job.localId !== localId,
+    );
     setDrafts((prev) => prev.filter((draft) => draft.localId !== localId));
   }
 
@@ -157,9 +190,13 @@ export function BulkImport({
     const ready = drafts.filter(
       (draft) => draft.status === 'ready' && draft.imageUrl,
     );
-    if (!ready.length) return;
+    if (!ready.length) {
+      setSaveError('Wait until at least one photo is tagged, then save.');
+      return;
+    }
 
     setSaving(true);
+    setSaveError('');
     try {
       const items: ClothingItem[] = ready.map((draft) => ({
         id: crypto.randomUUID(),
@@ -180,6 +217,10 @@ export function BulkImport({
 
       await saveItems(items);
       onDone();
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : 'Could not save to wardrobe.',
+      );
     } finally {
       setSaving(false);
     }
@@ -189,25 +230,73 @@ export function BulkImport({
   const pendingCount = drafts.filter(
     (draft) => draft.status === 'processing',
   ).length;
+  const percent =
+    progress.total === 0
+      ? 0
+      : Math.round((progress.done / progress.total) * 100);
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl bg-surface px-4 py-3 text-sm text-muted ring-1 ring-border">
-        Select multiple photos. They compress quickly with local color tags so
-        you can review and edit before saving. Soften backgrounds on single Add
-        when you want that look.
+        Select multiple photos. Each one is tagged in the background with a
+        short pause so the page stays usable. Review and edit as they finish.
       </div>
 
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={processing}
-        className="w-full rounded-2xl bg-accent py-3.5 text-sm font-semibold text-white disabled:opacity-60"
-      >
-        {processing
-          ? `Processing ${pendingCount || '…'} left…`
-          : 'Choose photos'}
-      </button>
+      {progress.total > 0 && (
+        <div className="rounded-[1.25rem] border border-border/60 bg-surface-elevated p-4">
+          <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+            <p className="font-semibold">
+              {processing ? 'Working in background' : 'Batch complete'}
+            </p>
+            <p className="text-muted">
+              {progress.done}/{progress.total} · {percent}%
+            </p>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-accent-soft">
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-300"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            {processing
+              ? `${pendingCount} left. You can edit finished items or add more photos.`
+              : 'All selected photos are ready to review.'}
+          </p>
+        </div>
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="w-full rounded-2xl bg-surface py-3.5 text-sm font-semibold ring-1 ring-border"
+        >
+          {processing ? 'Add more photos' : 'Choose photos'}
+        </button>
+        <button
+          type="button"
+          disabled={saving || readyCount === 0}
+          onClick={() => void handleSave()}
+          className="w-full rounded-2xl bg-accent py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {saving
+            ? 'Saving…'
+            : readyCount === 0
+              ? 'Save to wardrobe'
+              : `Save ${readyCount} to wardrobe`}
+        </button>
+      </div>
+      {drafts.length > 0 && readyCount === 0 && (
+        <p className="text-center text-xs text-muted">
+          Save appears once the first photo finishes tagging.
+        </p>
+      )}
+      {saveError && (
+        <p className="text-sm text-red-700" role="alert">
+          {saveError}
+        </p>
+      )}
       <input
         ref={inputRef}
         type="file"
@@ -218,7 +307,7 @@ export function BulkImport({
           const files = event.target.files
             ? Array.from(event.target.files)
             : [];
-          void processFiles(files);
+          enqueueFiles(files);
           event.target.value = '';
         }}
       />
@@ -240,9 +329,10 @@ export function BulkImport({
                       className="h-full w-full object-contain"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center px-2 text-center text-xs text-muted">
+                    <div className="flex h-full flex-col items-center justify-center gap-2 px-2 text-center text-xs text-muted">
+                      <span className="size-5 animate-spin rounded-full border-2 border-accent-soft border-t-accent" />
                       {draft.status === 'processing'
-                        ? 'Processing…'
+                        ? 'Queued…'
                         : draft.error || 'Failed'}
                     </div>
                   )}
@@ -351,15 +441,27 @@ export function BulkImport({
         </ul>
       )}
 
-      {readyCount > 0 && (
-        <button
-          type="button"
-          disabled={saving || processing}
-          onClick={handleSave}
-          className="w-full rounded-2xl bg-accent py-3.5 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          Save {readyCount} item{readyCount === 1 ? '' : 's'}
-        </button>
+      {drafts.length > 0 && (
+        <div className="h-20 lg:h-4" />
+      )}
+
+      {drafts.length > 0 && (
+        <div className="fixed inset-x-0 bottom-[4.25rem] z-30 px-4 pb-[env(safe-area-inset-bottom)] lg:bottom-6">
+          <div className="mx-auto w-full max-w-6xl">
+            <button
+              type="button"
+              disabled={saving || readyCount === 0}
+              onClick={() => void handleSave()}
+              className="w-full rounded-2xl bg-accent py-3.5 text-sm font-semibold text-white shadow-lg disabled:opacity-50"
+            >
+              {saving
+                ? 'Saving…'
+                : readyCount === 0
+                  ? 'Save to wardrobe'
+                  : `Save ${readyCount} to wardrobe`}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

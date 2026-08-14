@@ -59,3 +59,14 @@ export const COLOR_CLASHES: Array<[Color, Color]> = [
   ['Red', 'Blue'],
   ['Green', 'Blue'],
 ];
+
+export const MISC_SUGGESTIONS = [
+  'Sandals I have',
+  'Caps I have',
+  'Bags I have',
+  'Belts I have',
+  'Jewelry I have',
+  'Scarves I have',
+  'Sunglasses I have',
+  'Watches I have',
+] as const;

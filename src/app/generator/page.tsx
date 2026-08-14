@@ -1,13 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { OutfitBuilder } from '@/components/generator/OutfitBuilder';
 import { OutfitCard } from '@/components/generator/OutfitCard';
+import { OutfitSuggestions } from '@/components/generator/OutfitSuggestions';
 import { useWardrobe } from '@/context/WardrobeContext';
 import type { Outfit } from '@/types';
 
-type Tab = 'make' | 'saved';
+type Tab = 'suggest' | 'make' | 'saved';
 
 export default function GeneratorPage() {
   const {
@@ -19,7 +19,7 @@ export default function GeneratorPage() {
     markItemsWorn,
     resolveOutfit,
   } = useWardrobe();
-  const [tab, setTab] = useState<Tab>('make');
+  const [tab, setTab] = useState<Tab>('suggest');
 
   const resolvedSaved = useMemo(
     () =>
@@ -42,7 +42,7 @@ export default function GeneratorPage() {
           Outfits
         </h1>
         <p className="mt-2 text-sm text-muted sm:text-base">
-          Pick pieces from your wardrobe, build a look, and save it for later.
+          Get AI looks from clothes you already own, or build one yourself.
         </p>
       </div>
 
@@ -52,17 +52,26 @@ export default function GeneratorPage() {
       >
         <button
           type="button"
+          onClick={() => setTab('suggest')}
+          className={`flex-1 rounded-xl px-2 py-2.5 text-sm font-semibold transition sm:px-3 ${
+            tab === 'suggest' ? 'bg-accent text-white' : 'text-muted'
+          }`}
+        >
+          Suggest
+        </button>
+        <button
+          type="button"
           onClick={() => setTab('make')}
-          className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+          className={`flex-1 rounded-xl px-2 py-2.5 text-sm font-semibold transition sm:px-3 ${
             tab === 'make' ? 'bg-accent text-white' : 'text-muted'
           }`}
         >
-          Make outfit
+          Make
         </button>
         <button
           type="button"
           onClick={() => setTab('saved')}
-          className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+          className={`flex-1 rounded-xl px-2 py-2.5 text-sm font-semibold transition sm:px-3 ${
             tab === 'saved' ? 'bg-accent text-white' : 'text-muted'
           }`}
         >
@@ -70,7 +79,11 @@ export default function GeneratorPage() {
         </button>
       </div>
 
-      {tab === 'make' ? (
+      {tab === 'suggest' ? (
+        <div className="animate-fade-up" style={{ animationDelay: '60ms' }}>
+          <OutfitSuggestions items={items} onSave={handleSaveOutfit} />
+        </div>
+      ) : tab === 'make' ? (
         <div className="animate-fade-up" style={{ animationDelay: '60ms' }}>
           <OutfitBuilder items={items} onSave={handleSaveOutfit} />
         </div>
@@ -78,14 +91,14 @@ export default function GeneratorPage() {
         <div className="rounded-[1.75rem] border border-dashed border-border bg-surface-elevated/70 px-6 py-16 text-center">
           <p className="font-display text-xl font-semibold">No saved outfits</p>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
-            Make an outfit from your wardrobe, then save it here.
+            Ask AI for a look, or make one yourself, then save it here.
           </p>
           <button
             type="button"
-            onClick={() => setTab('make')}
+            onClick={() => setTab('suggest')}
             className="mt-6 rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-white"
           >
-            Make outfit
+            Suggest with AI
           </button>
         </div>
       ) : (
@@ -111,16 +124,6 @@ export default function GeneratorPage() {
         </ul>
       )}
 
-      {tab === 'make' && items.length === 0 && (
-        <div className="mt-4 flex justify-center gap-3">
-          <Link
-            href="/add-item"
-            className="rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-white"
-          >
-            Add item
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

@@ -47,10 +47,10 @@ export default function HomePage() {
                 Add item
               </Link>
               <Link
-                href="/capsule"
+                href="/misc"
                 className="rounded-2xl px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-surface-elevated/70 sm:px-5 sm:py-3.5"
               >
-                Capsule
+                Extras
               </Link>
             </div>
 
@@ -146,15 +146,22 @@ function FeaturedStage({
         {featured.map((item) => (
           <div
             key={item.id}
-            className="relative aspect-[3/4] max-h-[420px] min-h-[220px] bg-accent-soft/30 sm:min-h-[280px] lg:aspect-auto lg:min-h-[360px]"
+            className="relative aspect-[3/4] overflow-hidden bg-accent-soft/40 sm:max-h-[480px]"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={item.imageUrl}
-              alt={item.title}
-              className="h-full w-full object-cover"
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl"
             />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/55 to-transparent px-3 pb-3 pt-10 sm:px-4 sm:pb-4 sm:pt-12">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.imageUrl}
+              alt={item.title}
+              className="relative z-10 h-full w-full object-contain"
+            />
+            <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-foreground/55 to-transparent px-3 pb-3 pt-10 sm:px-4 sm:pb-4 sm:pt-12">
               <p className="truncate text-sm font-semibold text-white">{item.title}</p>
               <p className="truncate text-xs text-white/80">
                 {item.category} · {item.color}

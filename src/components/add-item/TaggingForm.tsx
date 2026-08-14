@@ -44,7 +44,17 @@ export function TaggingForm() {
     );
   }
 
+  function clearAutoFields() {
+    setTitle('');
+    setBrand('');
+    setCategory('Top');
+    setColor('Black');
+    setOccasions(['Casual']);
+    setSeason('All-Season');
+  }
+
   async function handleAutoTag(nextImage: string) {
+    clearAutoFields();
     setAutoTagging(true);
     setError('');
     try {
@@ -127,7 +137,20 @@ export function TaggingForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
+    <form onSubmit={handleSubmit} className="relative space-y-5 md:space-y-6">
+      {autoTagging && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 backdrop-blur-[2px]">
+          <div className="flex flex-col items-center gap-4 rounded-[1.5rem] bg-surface-elevated px-8 py-7 shadow-xl">
+            <span
+              className="size-10 animate-spin rounded-full border-[3px] border-accent-soft border-t-accent"
+              aria-hidden
+            />
+            <p className="font-display text-lg font-semibold">Auto-tagging</p>
+            <p className="text-sm text-muted">Reading the photo for tags…</p>
+          </div>
+        </div>
+      )}
+
       <ModeToggle mode={mode} onChange={setMode} />
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-start md:gap-6 xl:gap-8">
@@ -135,7 +158,17 @@ export function TaggingForm() {
         <aside className="rounded-2xl bg-surface/80 p-3 ring-1 ring-border/70 sm:p-4 md:sticky md:top-24">
           <ImageUploader
             imageUrl={imageUrl}
-            onChange={setImageUrl}
+            onChange={(url) => {
+              setImageUrl(url);
+              if (!url) {
+                clearAutoFields();
+                setAutoTagging(false);
+              } else {
+                setTitle('');
+                setBrand('');
+                setAutoTagging(true);
+              }
+            }}
             onProcessed={(url) => {
               void handleAutoTag(url);
             }}
@@ -145,11 +178,6 @@ export function TaggingForm() {
               setMode('bulk');
             }}
           />
-          {autoTagging && (
-            <p className="mt-3 text-sm font-medium text-accent">
-              Auto-tagging from photo…
-            </p>
-          )}
         </aside>
 
         {/* Right: details */}
