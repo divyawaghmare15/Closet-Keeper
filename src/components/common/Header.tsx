@@ -51,15 +51,27 @@ export function Header() {
 
           {configured ? (
             user ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void signOut();
-                }}
-                className="ml-1 shrink-0 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition hover:bg-accent-soft/70 hover:text-foreground xl:px-4"
-              >
-                Sign out
-              </button>
+              <>
+                <Link
+                  href="/profile"
+                  className={`ml-1 shrink-0 rounded-xl px-3 py-2 text-sm font-semibold transition xl:px-4 ${
+                    pathname === '/profile'
+                      ? 'bg-accent text-white'
+                      : 'text-muted hover:bg-accent-soft/70 hover:text-foreground'
+                  }`}
+                >
+                  Profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void signOut();
+                  }}
+                  className="shrink-0 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition hover:bg-accent-soft/70 hover:text-foreground xl:px-4"
+                >
+                  Sign out
+                </button>
+              </>
             ) : (
               <Link
                 href="/auth"

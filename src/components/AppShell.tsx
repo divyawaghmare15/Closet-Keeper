@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { BackendBanner } from '@/components/common/BackendBanner';
 import { BottomNav } from '@/components/common/BottomNav';
 import { Header } from '@/components/common/Header';
+import { OnboardingTour } from '@/components/common/OnboardingTour';
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -14,6 +15,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <BottomNav />
+      <OnboardingTour />
     </>
   );
 }

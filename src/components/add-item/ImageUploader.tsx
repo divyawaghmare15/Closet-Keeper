@@ -26,6 +26,7 @@ export function ImageUploader({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [pendingRaw, setPendingRaw] = useState('');
+  const [originalRaw, setOriginalRaw] = useState('');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
 
@@ -33,6 +34,7 @@ export function ImageUploader({
     if (!file.type.startsWith('image/')) return;
     setError('');
     const dataUrl = await fileToDataUrl(file);
+    setOriginalRaw(dataUrl);
     setPendingRaw(dataUrl);
   }
 
@@ -65,7 +67,13 @@ export function ImageUploader({
   function clearPhoto() {
     setError('');
     setPendingRaw('');
+    setOriginalRaw('');
     onChange('');
+  }
+
+  function reCrop() {
+    if (!originalRaw) return;
+    setPendingRaw(originalRaw);
   }
 
   async function finishProcessed(source: string) {
@@ -192,14 +200,26 @@ export function ImageUploader({
       </div>
 
       {imageUrl && (
-        <button
-          type="button"
-          onClick={() => void softenOnDemand()}
-          disabled={Boolean(busy)}
-          className="mt-2 w-full cursor-pointer rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
-        >
-          Soften background
-        </button>
+        <div className="mt-2 flex gap-2">
+          {originalRaw && (
+            <button
+              type="button"
+              onClick={reCrop}
+              disabled={Boolean(busy)}
+              className="flex-1 cursor-pointer rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
+            >
+              Re-crop
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => void softenOnDemand()}
+            disabled={Boolean(busy)}
+            className="flex-1 cursor-pointer rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
+          >
+            Soften BG
+          </button>
+        </div>
       )}
 
       {error && (

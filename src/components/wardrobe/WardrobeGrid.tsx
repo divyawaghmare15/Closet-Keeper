@@ -1,12 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { EditItemSheet } from '@/components/wardrobe/EditItemSheet';
 import { ItemCard } from '@/components/wardrobe/ItemCard';
 import { useWardrobe } from '@/context/WardrobeContext';
+import type { ClothingItem } from '@/types';
 
 export function WardrobeGrid() {
   const { filteredItems, filters, toggleCleanStatus, deleteItem } =
     useWardrobe();
+  const [editingItem, setEditingItem] = useState<ClothingItem | null>(null);
 
   const hasActiveFilters =
     filters.category !== 'All' ||
@@ -37,24 +41,34 @@ export function WardrobeGrid() {
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
-      {filteredItems.map((item, index) => (
-        <li
-          key={item.id}
-          className="animate-fade-up"
-          style={{ animationDelay: `${index * 40}ms` }}
-        >
-          <ItemCard
-            item={item}
-            onToggleClean={() => {
-              void toggleCleanStatus(item.id);
-            }}
-            onDelete={() => {
-              void deleteItem(item.id);
-            }}
-          />
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+        {filteredItems.map((item, index) => (
+          <li
+            key={item.id}
+            className="animate-fade-up"
+            style={{ animationDelay: `${index * 40}ms` }}
+          >
+            <ItemCard
+              item={item}
+              onToggleClean={() => {
+                void toggleCleanStatus(item.id);
+              }}
+              onDelete={() => {
+                void deleteItem(item.id);
+              }}
+              onEdit={() => setEditingItem(item)}
+            />
+          </li>
+        ))}
+      </ul>
+
+      {editingItem && (
+        <EditItemSheet
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+        />
+      )}
+    </>
   );
 }

@@ -7,10 +7,12 @@ export function ItemCard({
   item,
   onToggleClean,
   onDelete,
+  onEdit,
 }: {
   item: ClothingItem;
   onToggleClean: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const meta = [
     item.category,
@@ -71,18 +73,25 @@ export function ItemCard({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onToggleClean}
-            className="flex-1 rounded-xl bg-surface px-3 py-2.5 text-sm font-semibold text-foreground ring-1 ring-border transition hover:bg-accent-soft"
+            onClick={onEdit}
+            className="flex-1 cursor-pointer rounded-xl bg-accent px-3 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
           >
-            {item.isClean ? 'Mark in wash' : 'Mark clean'}
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={onToggleClean}
+            className="cursor-pointer rounded-xl bg-surface px-3 py-2.5 text-sm font-semibold text-foreground ring-1 ring-border transition hover:bg-accent-soft"
+          >
+            {item.isClean ? 'Wash' : 'Clean'}
           </button>
           <button
             type="button"
             onClick={onDelete}
             aria-label={`Delete ${item.title}`}
-            className="rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition hover:bg-red-50 hover:text-red-700"
+            className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition hover:bg-red-50 hover:text-red-700"
           >
-            Delete
+            ✕
           </button>
         </div>
       </div>

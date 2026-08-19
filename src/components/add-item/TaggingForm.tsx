@@ -26,7 +26,13 @@ export function TaggingForm() {
   const [mode, setMode] = useState<'single' | 'bulk'>('single');
   const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<Category>('Top');
+  const defaultCategory = (() => {
+    if (typeof window === 'undefined') return CATEGORIES[0];
+    const saved = localStorage.getItem('ck_preferred_category');
+    if (saved && CATEGORIES.includes(saved as Category)) return saved as Category;
+    return CATEGORIES[0];
+  })();
+  const [category, setCategory] = useState<Category>(defaultCategory);
   const [color, setColor] = useState<Color>('Black');
   const [occasions, setOccasions] = useState<Occasion[]>(['Casual']);
   const [isClean, setIsClean] = useState(true);
@@ -211,7 +217,11 @@ export function TaggingForm() {
               <span className="text-sm font-semibold">Category</span>
               <select
                 value={category}
-                onChange={(event) => setCategory(event.target.value as Category)}
+                onChange={(event) => {
+                  const val = event.target.value as Category;
+                  setCategory(val);
+                  localStorage.setItem('ck_preferred_category', val);
+                }}
                 className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-accent"
               >
                 {CATEGORIES.map((value) => (

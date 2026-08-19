@@ -2,6 +2,19 @@
 
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 
+type AspectOption = 'free' | '1:1' | '3:4';
+const ASPECT_OPTIONS: { label: string; value: AspectOption }[] = [
+  { label: 'Free', value: 'free' },
+  { label: '1:1', value: '1:1' },
+  { label: '3:4', value: '3:4' },
+];
+
+function aspectRatio(option: AspectOption): number | null {
+  if (option === '1:1') return 1;
+  if (option === '3:4') return 3 / 4;
+  return null;
+}
+
 export function ImageCropper({
   imageUrl,
   onCancel,
@@ -21,6 +34,8 @@ export function ImageCropper({
   const imageRef = useRef<HTMLImageElement>(null);
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   const [crop, setCrop] = useState({ x: 0.1, y: 0.1, width: 0.8, height: 0.8 });
+  const [aspect, setAspect] = useState<AspectOption>('free');
+  const [rotation, setRotation] = useState(0);
   const dragRef = useRef<{
     mode: 'move' | 'resize';
     startX: number;
@@ -30,6 +45,7 @@ export function ImageCropper({
 
   useEffect(() => {
     setCrop({ x: 0.1, y: 0.1, width: 0.8, height: 0.8 });
+    setRotation(0);
   }, [imageUrl]);
 
   useEffect(() => {
@@ -39,6 +55,22 @@ export function ImageCropper({
     };
   }, []);
 
+  useEffect(() => {
+    const ratio = aspectRatio(aspect);
+    if (!ratio) return;
+    setCrop((prev) => {
+      const w = prev.width;
+      const h = w / ratio;
+      if (h > 1) {
+        const newH = Math.min(0.9, h);
+        const newW = newH * ratio;
+        return clampCrop({ x: prev.x, y: prev.y, width: newW, height: newH });
+      }
+      return clampCrop({ ...prev, height: h });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aspect]);
+
   function clampCrop(next: typeof crop) {
     const width = Math.min(1, Math.max(0.15, next.width));
     const height = Math.min(1, Math.max(0.15, next.height));
@@ -47,10 +79,7 @@ export function ImageCropper({
     return { x, y, width, height };
   }
 
-  function handlePointerDown(
-    event: PointerEvent,
-    mode: 'move' | 'resize',
-  ) {
+  function handlePointerDown(event: PointerEvent, mode: 'move' | 'resize') {
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
@@ -71,18 +100,22 @@ export function ImageCropper({
     if (mode === 'move') {
       setCrop(clampCrop({ ...origin, x: origin.x + dx, y: origin.y + dy }));
     } else {
-      setCrop(
-        clampCrop({
-          ...origin,
-          width: origin.width + dx,
-          height: origin.height + dy,
-        }),
-      );
+      const ratio = aspectRatio(aspect);
+      let newWidth = origin.width + dx;
+      let newHeight = origin.height + dy;
+      if (ratio) {
+        newHeight = newWidth / ratio;
+      }
+      setCrop(clampCrop({ ...origin, width: newWidth, height: newHeight }));
     }
   }
 
   function handlePointerUp() {
     dragRef.current = null;
+  }
+
+  function handleRotate() {
+    setRotation((r) => (r + 90) % 360);
   }
 
   function confirm() {
@@ -106,14 +139,14 @@ export function ImageCropper({
             Crop photo
           </h2>
           <p className="text-xs text-white/60 sm:text-sm">
-            Drag to move, corner handle to resize
+            Drag to move, corner to resize
           </p>
         </div>
         <button
           type="button"
           onClick={onCancel}
           aria-label="Close"
-          className="flex size-9 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
+          className="flex size-9 cursor-pointer items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
             <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -121,7 +154,38 @@ export function ImageCropper({
         </button>
       </div>
 
-      {/* Crop area — fills remaining space */}
+      {/* Toolbar: aspect ratio + rotate */}
+      <div className="flex shrink-0 items-center justify-center gap-2 px-4 pb-2">
+        {ASPECT_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setAspect(opt.value)}
+            className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              aspect === opt.value
+                ? 'bg-accent text-white'
+                : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+        <span className="mx-1 h-5 w-px bg-white/20" aria-hidden />
+        <button
+          type="button"
+          onClick={handleRotate}
+          aria-label="Rotate 90°"
+          className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/20 hover:text-white"
+        >
+          <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden>
+            <path d="M4 12a8 8 0 0 1 14.93-4M20 12a8 8 0 0 1-14.93 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M19 4v4h-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Rotate
+        </button>
+      </div>
+
+      {/* Crop area */}
       <div className="relative flex min-h-0 flex-1 items-center justify-center px-3 pb-2 sm:px-6">
         <div className="relative max-h-full max-w-full">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -130,7 +194,8 @@ export function ImageCropper({
             src={imageUrl}
             alt="Crop preview"
             draggable={false}
-            className="max-h-[calc(100svh-10rem)] max-w-full select-none rounded-lg object-contain"
+            className="max-h-[calc(100svh-13rem)] max-w-full select-none rounded-lg object-contain"
+            style={{ transform: `rotate(${rotation}deg)` }}
             onLoad={(event) => {
               setNatural({
                 width: event.currentTarget.naturalWidth,
@@ -140,6 +205,7 @@ export function ImageCropper({
           />
           <div
             className="absolute inset-0 touch-none"
+            style={{ transform: `rotate(${rotation}deg)` }}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
           >
@@ -153,7 +219,6 @@ export function ImageCropper({
               }}
               onPointerDown={(event) => handlePointerDown(event, 'move')}
             >
-              {/* Corner handles */}
               {(['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
                 <span
                   key={corner}
@@ -166,7 +231,6 @@ export function ImageCropper({
                   aria-hidden
                 />
               ))}
-              {/* Resize handle (bottom-right, bigger touch target) */}
               <button
                 type="button"
                 aria-label="Resize crop"
@@ -181,12 +245,12 @@ export function ImageCropper({
         </div>
       </div>
 
-      {/* Footer buttons */}
+      {/* Footer */}
       <div className="flex shrink-0 gap-3 px-4 py-3 sm:justify-center sm:px-5 sm:py-4">
         <button
           type="button"
           onClick={onSkip}
-          className="flex-1 rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20 sm:max-w-[180px]"
+          className="flex-1 cursor-pointer rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20 sm:max-w-[180px]"
         >
           Skip crop
         </button>
@@ -194,7 +258,7 @@ export function ImageCropper({
           type="button"
           onClick={confirm}
           disabled={!canConfirm}
-          className="flex-1 rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[180px]"
+          className="flex-1 cursor-pointer rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[180px]"
         >
           {canConfirm ? 'Crop' : 'Loading…'}
         </button>
