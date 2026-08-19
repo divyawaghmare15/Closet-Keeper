@@ -61,7 +61,7 @@ export function TaggingForm() {
     setAutoTagging(true);
     setError('');
     try {
-      const tags = await autoTagFromImage(nextImage);
+      const tags = await autoTagFromImage(nextImage, gender);
       if (tags.title) setTitle(tags.title);
       if (tags.category) setCategory(tags.category);
       if (tags.color) setColor(tags.color);

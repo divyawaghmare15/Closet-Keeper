@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { CATEGORIES, COLORS, OCCASIONS, SEASONS } from '@/lib/constants';
-import type { AutoTagResult, Category, Color, Occasion, Season } from '@/types';
+import { CATEGORIES, COLORS, MALE_CATEGORIES, FEMALE_CATEGORIES, OCCASIONS, SEASONS } from '@/lib/constants';
+import type { AutoTagResult, Category, Color, Gender, Occasion, Season } from '@/types';
 
 export const runtime = 'nodejs';
 
@@ -60,18 +60,45 @@ function sanitize(result: AutoTagResult): AutoTagResult {
   };
 }
 
-function taggingPrompt() {
+function taggingPrompt(gender: Gender | null) {
+  const categories = gender === 'male' ? MALE_CATEGORIES : gender === 'female' ? FEMALE_CATEGORIES : CATEGORIES;
+
+  const genderHint = gender === 'male'
+    ? `This is a MEN'S garment. Use men's category names:
+- A button-up shirt → "Shirt"
+- A round/polo neck → "T-Shirt"  
+- Denim pants → "Jeans"
+- Formal pants/chinos → "Trousers"
+- A coat/jacket → "Jacket"
+- A formal suit → "Suit"
+- A kurta/sherwani → "Ethnic"
+- A sweatshirt with hood → "Hoodie"
+- A formal jacket → "Blazer"
+- Half pants → "Shorts"`
+    : gender === 'female'
+    ? `This is a WOMEN'S garment. Use women's category names:
+- A blouse/crop top/tank → "Top"
+- A skirt/pants/leggings → "Bottom"
+- A dress/jumpsuit → "One-Piece"
+- A saree → "Saree"
+- A kurti/salwar → "Kurti"
+- A corset/bustier → "Corset"
+- A cardigan/shrug → "Layer"`
+    : '';
+
   return `You are a fashion expert analyzing a clothing photo. Look carefully at the garment and identify it accurately.
 
+${genderHint}
+
 IMPORTANT:
-- Look at the ACTUAL dominant color of the garment (not the background).
+- Look at the ACTUAL dominant color of the garment fabric (not the background, not buttons/zippers).
+- Be precise with color — if it's blue say Blue, if dark blue say Navy, if light pink say Pink, if wine/burgundy say Maroon.
 - Identify the correct category based on the garment type.
-- Be precise — if it's blue, say Blue. If it's navy/dark blue, say Navy. If pink, say Pink. Don't confuse colors.
 
 Reply with this exact JSON structure:
 {
   "title": "short descriptive name (e.g. Navy Slim Fit Shirt)",
-  "category": one of ${JSON.stringify(CATEGORIES)},
+  "category": one of ${JSON.stringify(categories)},
   "color": one of ${JSON.stringify(COLORS)},
   "occasions": array of 1-3 values from ${JSON.stringify(OCCASIONS)},
   "season": one of ${JSON.stringify(SEASONS)},
@@ -79,10 +106,10 @@ Reply with this exact JSON structure:
 }
 
 Rules:
-- For color: pick the DOMINANT color of the clothing fabric, ignoring buttons/zippers/background.
-- For category: match the garment type to the closest option. A polo/t-shirt is "T-Shirt", a formal shirt is "Shirt", a dress is "One-Piece", etc.
+- For color: pick the DOMINANT color of the clothing fabric only.
+- For category: match to the closest option from the list above. DO NOT use categories outside the given list.
 - For occasions: pick what this item is suitable for (can be multiple).
-- For season: "All-Season" if it works year-round.`;
+- For season: "All-Season" if it works year-round, "Summer" for light/breathable, "Winter" for warm/heavy.`;
 }
 
 function parseDataUrl(image: string): { mime: string; data: string } | null {
@@ -91,7 +118,7 @@ function parseDataUrl(image: string): { mime: string; data: string } | null {
   return { mime: match[1], data: match[2] };
 }
 
-async function tagWithGemini(image: string): Promise<AutoTagResult | null> {
+async function tagWithGemini(image: string, gender: Gender | null): Promise<AutoTagResult | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
@@ -115,7 +142,7 @@ async function tagWithGemini(image: string): Promise<AutoTagResult | null> {
         contents: [
           {
             parts: [
-              { text: taggingPrompt() },
+              { text: taggingPrompt(gender) },
               {
                 inline_data: {
                   mime_type: parsedImage.mime,
@@ -149,7 +176,7 @@ async function tagWithGemini(image: string): Promise<AutoTagResult | null> {
   return parseJsonLoose(content);
 }
 
-async function tagWithOpenAI(image: string): Promise<AutoTagResult | null> {
+async function tagWithOpenAI(image: string, gender: Gender | null): Promise<AutoTagResult | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
@@ -166,7 +193,7 @@ async function tagWithOpenAI(image: string): Promise<AutoTagResult | null> {
         {
           role: 'user',
           content: [
-            { type: 'text', text: taggingPrompt() },
+            { type: 'text', text: taggingPrompt(gender) },
             { type: 'image_url', image_url: { url: image } },
           ],
         },
@@ -196,17 +223,20 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as { image?: string };
+    const body = (await request.json()) as { image?: string; gender?: string };
     if (!body.image) {
       return NextResponse.json({ error: 'Missing image' }, { status: 400 });
     }
+
+    const gender: Gender | null =
+      body.gender === 'male' || body.gender === 'female' ? body.gender : null;
 
     let parsed: AutoTagResult | null = null;
     let lastError = '';
 
     if (hasGemini) {
       try {
-        parsed = await tagWithGemini(body.image);
+        parsed = await tagWithGemini(body.image, gender);
       } catch (error) {
         lastError = error instanceof Error ? error.message : 'Gemini failed';
       }
@@ -214,7 +244,7 @@ export async function POST(request: Request) {
 
     if (!parsed && hasOpenAI) {
       try {
-        parsed = await tagWithOpenAI(body.image);
+        parsed = await tagWithOpenAI(body.image, gender);
       } catch (error) {
         lastError = error instanceof Error ? error.message : 'OpenAI failed';
       }

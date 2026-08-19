@@ -122,7 +122,7 @@ export function BulkImport({
       const compressed = await compressDataUrl(raw);
       let tags;
       try {
-        tags = await autoTagFromImage(compressed);
+        tags = await autoTagFromImage(compressed, gender);
       } catch {
         tags = {
           title: job.fallbackTitle,

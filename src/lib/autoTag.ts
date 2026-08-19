@@ -1,5 +1,5 @@
 import { detectDominantColor } from '@/lib/imageProcess';
-import type { AutoTagResult, Category } from '@/types';
+import type { AutoTagResult, Category, Gender } from '@/types';
 
 /** Resize a data-URL to max 512px on the longest side for fast API upload. */
 function shrinkForApi(dataUrl: string): Promise<string> {
@@ -29,9 +29,10 @@ function shrinkForApi(dataUrl: string): Promise<string> {
 export async function autoTagFromImageLocal(
   imageUrl: string,
   fallbackTitle = '',
+  gender: Gender | null = null,
 ): Promise<AutoTagResult> {
   const color = await detectDominantColor(imageUrl);
-  const category: Category = 'Top';
+  const category: Category = gender === 'male' ? 'T-Shirt' : 'Top';
   const cleaned = fallbackTitle.trim();
 
   return {
@@ -44,7 +45,10 @@ export async function autoTagFromImageLocal(
   };
 }
 
-export async function autoTagFromImage(imageUrl: string): Promise<AutoTagResult> {
+export async function autoTagFromImage(
+  imageUrl: string,
+  gender: Gender | null = null,
+): Promise<AutoTagResult> {
   try {
     const small = await shrinkForApi(imageUrl);
     const controller = new AbortController();
@@ -53,7 +57,7 @@ export async function autoTagFromImage(imageUrl: string): Promise<AutoTagResult>
     const response = await fetch('/api/auto-tag', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: small }),
+      body: JSON.stringify({ image: small, gender }),
       signal: controller.signal,
     });
 
@@ -67,5 +71,5 @@ export async function autoTagFromImage(imageUrl: string): Promise<AutoTagResult>
     // fall through to local heuristic
   }
 
-  return autoTagFromImageLocal(imageUrl);
+  return autoTagFromImageLocal(imageUrl, '', gender);
 }
