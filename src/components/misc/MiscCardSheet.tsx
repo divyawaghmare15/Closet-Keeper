@@ -52,7 +52,7 @@ export function MiscCardSheet({
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
-    setDraft(card ?? emptyCard(card?.title ?? ''));
+    setDraft(card ?? emptyCard());
     setView(isNew ? 'create' : 'gallery');
     setPending([]);
     setError('');
