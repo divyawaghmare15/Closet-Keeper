@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { ImageCropper } from '@/components/add-item/ImageCropper';
 import {
   compressDataUrl,
@@ -129,7 +130,7 @@ export function ImageUploader({
       <div
         onDragOver={(event) => event.preventDefault()}
         onDrop={handleDrop}
-        className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-[1.25rem] border border-dashed border-border bg-white md:aspect-[3/4] md:max-h-[520px]"
+        className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[1.25rem] border border-dashed border-border bg-white sm:aspect-[4/3] md:aspect-[3/4] md:max-h-[420px]"
       >
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -156,7 +157,7 @@ export function ImageUploader({
           type="button"
           onClick={() => cameraInputRef.current?.click()}
           disabled={Boolean(busy)}
-          className="min-w-0 flex-1 rounded-2xl bg-accent px-3 py-3 text-sm font-semibold text-white disabled:opacity-60"
+          className="min-w-0 flex-1 cursor-pointer rounded-2xl bg-accent px-3 py-3 text-sm font-semibold text-white disabled:opacity-60"
         >
           Take photo
         </button>
@@ -164,7 +165,7 @@ export function ImageUploader({
           type="button"
           onClick={() => galleryInputRef.current?.click()}
           disabled={Boolean(busy)}
-          className="min-w-0 flex-1 rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
+          className="min-w-0 flex-1 cursor-pointer rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
         >
           {multiple ? 'Gallery / bulk' : 'From gallery'}
         </button>
@@ -175,7 +176,7 @@ export function ImageUploader({
             disabled={Boolean(busy)}
             aria-label="Delete photo"
             title="Delete photo"
-            className="flex shrink-0 items-center justify-center rounded-2xl bg-surface px-3 py-3 text-red-700 ring-1 ring-border disabled:opacity-60 hover:bg-red-50"
+            className="flex shrink-0 cursor-pointer items-center justify-center rounded-2xl bg-surface px-3 py-3 text-red-700 ring-1 ring-border disabled:opacity-60 hover:bg-red-50"
           >
             <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
               <path
@@ -195,7 +196,7 @@ export function ImageUploader({
           type="button"
           onClick={() => void softenOnDemand()}
           disabled={Boolean(busy)}
-          className="mt-2 w-full rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
+          className="mt-2 w-full cursor-pointer rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
         >
           Soften background
         </button>
@@ -224,18 +225,20 @@ export function ImageUploader({
         onChange={handleGalleryChange}
       />
 
-      {pendingRaw && (
-        <ImageCropper
-          imageUrl={pendingRaw}
-          onCancel={() => setPendingRaw('')}
-          onSkip={() => {
-            void skipCropAndProcess();
-          }}
-          onConfirm={(crop) => {
-            void applyCrop(crop);
-          }}
-        />
-      )}
+      {pendingRaw &&
+        createPortal(
+          <ImageCropper
+            imageUrl={pendingRaw}
+            onCancel={() => setPendingRaw('')}
+            onSkip={() => {
+              void skipCropAndProcess();
+            }}
+            onConfirm={(crop) => {
+              void applyCrop(crop);
+            }}
+          />,
+          document.body,
+        )}
     </div>
   );
 }

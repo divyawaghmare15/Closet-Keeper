@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { useWardrobe } from '@/context/WardrobeContext';
 import { autoTagFromImage } from '@/lib/autoTag';
-import { CATEGORIES, COLORS, OCCASIONS, SEASONS } from '@/lib/constants';
+import { categoriesForGender, COLORS, OCCASIONS, SEASONS } from '@/lib/constants';
 import { compressDataUrl, fileToDataUrl } from '@/lib/imageProcess';
 import type {
   Category,
@@ -46,6 +47,8 @@ export function BulkImport({
   initialFiles?: File[];
 }) {
   const { saveItems } = useWardrobe();
+  const { gender } = useAuth();
+  const CATEGORIES = categoriesForGender(gender);
   const inputRef = useRef<HTMLInputElement>(null);
   const queueRef = useRef<QueueJob[]>([]);
   const runningRef = useRef(false);

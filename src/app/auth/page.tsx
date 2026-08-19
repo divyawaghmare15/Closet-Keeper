@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import type { Gender } from '@/types';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function AuthPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -45,10 +47,10 @@ export default function AuthPage() {
         </h1>
         <p className="mt-2 text-sm text-muted">{user.email}</p>
         <Link
-          href="/wardrobe"
+          href="/"
           className="mt-6 inline-flex cursor-pointer rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-white"
         >
-          Open wardrobe
+          Go to home
         </Link>
       </div>
     );
@@ -63,9 +65,14 @@ export default function AuthPage() {
     try {
       if (mode === 'signin') {
         await signIn(email.trim(), password);
-        router.push('/wardrobe');
+        router.push('/');
       } else {
-        await signUp(email.trim(), password);
+        if (!selectedGender) {
+          setError('Please select Male or Female to continue.');
+          setBusy(false);
+          return;
+        }
+        await signUp(email.trim(), password, selectedGender);
         setMessage(
           'Account created. If email confirmation is enabled in Supabase, check your inbox before signing in.',
         );
@@ -130,6 +137,28 @@ export default function AuthPage() {
             </button>
           </div>
         </div>
+
+        {mode === 'signup' && (
+          <fieldset className="space-y-1.5">
+            <legend className="text-sm font-semibold">I am</legend>
+            <div className="flex gap-3">
+              {(['female', 'male'] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setSelectedGender(g)}
+                  className={`flex-1 cursor-pointer rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                    selectedGender === g
+                      ? 'border-accent bg-accent text-white'
+                      : 'border-border bg-surface text-foreground hover:border-accent/50'
+                  }`}
+                >
+                  {g === 'female' ? 'Female' : 'Male'}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         {error && (
           <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">

@@ -1,16 +1,18 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { useWardrobe } from '@/context/WardrobeContext';
-import { CATEGORIES, OCCASIONS, SEASONS } from '@/lib/constants';
+import { categoriesForGender, OCCASIONS, SEASONS } from '@/lib/constants';
 import type { Category, Occasion, Season } from '@/types';
-
-const CATEGORY_FILTERS: Array<Category | 'All'> = ['All', ...CATEGORIES];
-const OCCASION_FILTERS: Array<Occasion | 'All'> = ['All', ...OCCASIONS];
-const SEASON_FILTERS: Array<Season | 'All'> = ['All', ...SEASONS];
 
 export function FilterBar() {
   const { filters, setFilters } = useWardrobe();
+  const { gender } = useAuth();
+  const genderCategories = categoriesForGender(gender);
+  const CATEGORY_FILTERS: Array<Category | 'All'> = ['All', ...genderCategories];
+  const OCCASION_FILTERS: Array<Occasion | 'All'> = ['All', ...OCCASIONS];
+  const SEASON_FILTERS: Array<Season | 'All'> = ['All', ...SEASONS];
 
   const hasActiveFilters =
     filters.category !== 'All' ||

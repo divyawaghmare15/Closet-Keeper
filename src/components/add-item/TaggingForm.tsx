@@ -6,8 +6,9 @@ import { BulkImport } from '@/components/add-item/BulkImport';
 import { ImageUploader } from '@/components/add-item/ImageUploader';
 import { useWardrobe } from '@/context/WardrobeContext';
 import { autoTagFromImage } from '@/lib/autoTag';
+import { useAuth } from '@/context/AuthContext';
 import {
-  CATEGORIES,
+  categoriesForGender,
   COLORS,
   OCCASIONS,
   SEASONS,
@@ -18,6 +19,8 @@ import type { Category, Color, Occasion, Season, Size } from '@/types';
 export function TaggingForm() {
   const router = useRouter();
   const { saveItem } = useWardrobe();
+  const { gender } = useAuth();
+  const CATEGORIES = categoriesForGender(gender);
   const cleanToggleId = useId();
 
   const [mode, setMode] = useState<'single' | 'bulk'>('single');
@@ -171,6 +174,7 @@ export function TaggingForm() {
             }}
             onProcessed={(url) => {
               void handleAutoTag(url);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             multiple
             onMultiple={(files) => {
@@ -186,7 +190,7 @@ export function TaggingForm() {
             <h2 className="font-display text-xl font-semibold tracking-tight">
               Item details
             </h2>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 hidden text-sm text-muted md:block">
               Fill tags on the right while the photo stays visible on the left.
             </p>
           </div>

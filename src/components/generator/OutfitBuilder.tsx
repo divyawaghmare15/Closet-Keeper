@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { CATEGORIES, OCCASIONS } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
+import { categoriesForGender, OCCASIONS } from '@/lib/constants';
 import type { Category, ClothingItem, Occasion, Outfit } from '@/types';
 
 export function OutfitBuilder({
@@ -11,6 +12,8 @@ export function OutfitBuilder({
   items: ClothingItem[];
   onSave: (outfit: Outfit) => Promise<void> | void;
 }) {
+  const { gender } = useAuth();
+  const CATEGORIES = categoriesForGender(gender);
   const [title, setTitle] = useState('');
   const [occasion, setOccasion] = useState<Occasion>('Casual');
   const [categoryFilter, setCategoryFilter] = useState<Category | 'All'>('All');

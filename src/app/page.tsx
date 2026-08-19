@@ -1,10 +1,30 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { useWardrobe } from '@/context/WardrobeContext';
 import type { ClothingItem } from '@/types';
 
 export default function HomePage() {
+  const { user, loading: authLoading, configured } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && configured && !user) {
+      router.replace('/auth');
+    }
+  }, [authLoading, configured, user, router]);
+
+  if (authLoading || (configured && !user)) {
+    return null;
+  }
+
+  return <HomeContent />;
+}
+
+function HomeContent() {
   const { items } = useWardrobe();
   const cleanItems = items.filter((item) => item.isClean);
   const featured = pickFeaturedPair(cleanItems);

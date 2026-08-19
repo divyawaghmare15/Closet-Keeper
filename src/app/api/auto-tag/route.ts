@@ -70,62 +70,53 @@ async function tagWithGemini(image: string): Promise<AutoTagResult | null> {
     throw new Error('Image must be a data URL for Gemini');
   }
 
-  const models = [
-    process.env.GEMINI_VISION_MODEL,
-    'gemini-flash-latest',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-  ].filter((value, index, list): value is string =>
-    Boolean(value) && list.indexOf(value) === index,
+  const model = process.env.GEMINI_VISION_MODEL || 'gemini-2.0-flash';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: taggingPrompt() },
+              {
+                inline_data: {
+                  mime_type: parsedImage.mime,
+                  data: parsedImage.data,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 256,
+          responseMimeType: 'application/json',
+        },
+      }),
+    },
   );
 
-  let lastError = 'Gemini request failed';
+  clearTimeout(timeout);
 
-  for (const model of models) {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: taggingPrompt() },
-                {
-                  inline_data: {
-                    mime_type: parsedImage.mime,
-                    data: parsedImage.data,
-                  },
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-          },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      lastError = `Gemini ${model}: ${await response.text()}`;
-      continue;
-    }
-
-    const payload = (await response.json()) as {
-      candidates?: Array<{
-        content?: { parts?: Array<{ text?: string }> };
-      }>;
-    };
-    const content = payload.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    const parsed = parseJsonLoose(content);
-    if (parsed) return parsed;
-    lastError = `Gemini ${model} returned unreadable JSON`;
+  if (!response.ok) {
+    throw new Error(`Gemini ${model}: ${await response.text()}`);
   }
 
-  throw new Error(lastError);
+  const payload = (await response.json()) as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+    }>;
+  };
+  const content = payload.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  return parseJsonLoose(content);
 }
 
 async function tagWithOpenAI(image: string): Promise<AutoTagResult | null> {

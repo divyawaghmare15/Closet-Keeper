@@ -1,3 +1,5 @@
+export type Gender = 'female' | 'male';
+
 export type Category =
   | 'Top'
   | 'Bottom'
@@ -7,7 +9,19 @@ export type Category =
   | 'Corset'
   | 'Layer'
   | 'Footwear'
-  | 'Accessory';
+  | 'Accessory'
+  | 'Shirt'
+  | 'T-Shirt'
+  | 'Jeans'
+  | 'Trousers'
+  | 'Shorts'
+  | 'Blazer'
+  | 'Jacket'
+  | 'Hoodie'
+  | 'Suit'
+  | 'Ethnic'
+  | 'Innerwear'
+  | 'Swimwear';
 
 export type Occasion =
   | 'Casual'
@@ -15,7 +29,12 @@ export type Occasion =
   | 'Formal'
   | 'Festive'
   | 'Party'
-  | 'Sports';
+  | 'Sports'
+  | 'Date Night'
+  | 'Travel'
+  | 'Lounge'
+  | 'Wedding'
+  | 'Interview';
 
 export type Color =
   | 'Black'
@@ -24,9 +43,22 @@ export type Color =
   | 'Red'
   | 'Green'
   | 'Beige'
+  | 'Brown'
+  | 'Grey'
+  | 'Navy'
+  | 'Pink'
+  | 'Purple'
+  | 'Yellow'
+  | 'Orange'
+  | 'Maroon'
+  | 'Cream'
+  | 'Olive'
+  | 'Teal'
+  | 'Gold'
+  | 'Silver'
   | 'Multicolor';
 
-export type Season = 'Spring' | 'Summer' | 'Fall' | 'Winter' | 'All-Season';
+export type Season = 'Spring' | 'Summer' | 'Fall' | 'Winter' | 'All-Season' | 'Monsoon';
 
 export type Size =
   | 'XS'
@@ -35,6 +67,17 @@ export type Size =
   | 'L'
   | 'XL'
   | 'XXL'
+  | 'XXXL'
+  | '28'
+  | '30'
+  | '32'
+  | '34'
+  | '36'
+  | '38'
+  | '40'
+  | '42'
+  | '44'
+  | 'Free Size'
   | 'One Size'
   | '';
 
