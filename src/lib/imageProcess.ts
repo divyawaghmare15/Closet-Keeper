@@ -273,23 +273,90 @@ export async function detectDominantColor(dataUrl: string): Promise<Color> {
   ctx.drawImage(image, 0, 0, size, size);
   const { data } = ctx.getImageData(0, 0, size, size);
 
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  let count = 0;
+  // Majority vote across pixels (more robust than averaging).
+  const counts: Record<Color, number> = {
+    Black: 0,
+    White: 0,
+    Beige: 0,
+    Red: 0,
+    Green: 0,
+    Blue: 0,
+    // The remaining colors exist in the app type, but this local heuristic
+    // intentionally maps only to a small palette it can classify reliably.
+    Brown: 0,
+    Grey: 0,
+    Navy: 0,
+    Pink: 0,
+    Purple: 0,
+    Yellow: 0,
+    Orange: 0,
+    Maroon: 0,
+    Cream: 0,
+    Olive: 0,
+    Teal: 0,
+    Gold: 0,
+    Silver: 0,
+    Multicolor: 0,
+  } as any;
 
-  for (let i = 0; i < data.length; i += 4) {
-    const alpha = data[i + 3];
+  let used = 0;
+  for (let idx = 0; idx < data.length; idx += 4) {
+    const alpha = data[idx + 3];
     if (alpha < 128) continue;
-    // Skip near-white / near-black edges often from backgrounds
-    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+
+    const pixelIndex = idx / 4;
+    const x = pixelIndex % size;
+    const y = Math.floor(pixelIndex / size);
+
+    // Sample the center area (ignores edges where backgrounds dominate).
+    if (x < size * 0.1 || x > size * 0.9 || y < size * 0.1 || y > size * 0.9) {
+      continue;
+    }
+
+    const r = data[idx];
+    const g = data[idx + 1];
+    const b = data[idx + 2];
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const sat = max === 0 ? 0 : (max - min) / max;
+    const brightness = (r + g + b) / 3;
+
+    // Skip near-white / near-black pixels (often background).
     if (brightness > 245 || brightness < 12) continue;
-    r += data[i];
-    g += data[i + 1];
-    b += data[i + 2];
-    count += 1;
+
+    let color: Color = 'Multicolor';
+
+    if (sat < 0.18) {
+      if (brightness > 0.85 * 255) color = 'White';
+      else if (brightness < 0.25 * 255) color = 'Black';
+      else color = 'Beige';
+    } else {
+      const d = max - min || 1;
+      let h = 0;
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      const hue = (h * 60 + 360) % 360;
+
+      if (hue < 25 || hue >= 345) color = 'Red';
+      else if (hue < 75) color = 'Beige';
+      else if (hue < 160) color = 'Green';
+      else if (hue < 260) color = 'Blue';
+      else if (hue < 320) color = 'Red';
+      else color = 'Multicolor';
+    }
+
+    counts[color] += 1;
+    used += 1;
   }
 
-  if (count === 0) return 'Multicolor';
-  return rgbToColor(r / count, g / count, b / count);
+  if (!used) return 'Multicolor';
+
+  // Pick the top bucket; if it's weak, report multicolor.
+  const entries = Object.entries(counts) as Array<[Color, number]>;
+  entries.sort((a, b) => b[1] - a[1]);
+  const [topColor, topCount] = entries[0];
+  if (topCount < used * 0.35) return 'Multicolor';
+  return topColor;
 }

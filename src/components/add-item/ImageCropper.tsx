@@ -95,6 +95,8 @@ export function ImageCropper({
     });
   }
 
+  const canConfirm = Boolean(natural.width && natural.height);
+
   return (
     <div className="fixed inset-0 z-[70] flex flex-col bg-foreground/95 backdrop-blur-sm">
       {/* Header */}
@@ -191,9 +193,10 @@ export function ImageCropper({
         <button
           type="button"
           onClick={confirm}
-          className="flex-1 rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110 sm:max-w-[180px]"
+          disabled={!canConfirm}
+          className="flex-1 rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[180px]"
         >
-          Use crop
+          {canConfirm ? 'Crop' : 'Loading…'}
         </button>
       </div>
     </div>
