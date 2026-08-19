@@ -14,23 +14,40 @@ function parseJsonLoose(text: string): AutoTagResult | null {
   }
 }
 
+function fuzzyMatch<T extends string>(value: unknown, list: readonly T[]): T | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const lower = value.trim().toLowerCase();
+
+  // Exact match
+  const exact = list.find((item) => item.toLowerCase() === lower);
+  if (exact) return exact;
+
+  // Partial match (e.g. "Navy Blue" → "Navy", "T Shirt" → "T-Shirt")
+  const partial = list.find(
+    (item) =>
+      lower.includes(item.toLowerCase()) ||
+      item.toLowerCase().includes(lower),
+  );
+  if (partial) return partial;
+
+  // Normalize hyphens/spaces (e.g. "tshirt" → "T-Shirt", "all season" → "All-Season")
+  const normalized = lower.replace(/[-\s]/g, '');
+  const normalMatch = list.find(
+    (item) => item.toLowerCase().replace(/[-\s]/g, '') === normalized,
+  );
+  if (normalMatch) return normalMatch;
+
+  return undefined;
+}
+
 function sanitize(result: AutoTagResult): AutoTagResult {
-  const category =
-    result.category && (CATEGORIES as string[]).includes(result.category)
-      ? (result.category as Category)
-      : undefined;
-  const color =
-    result.color && (COLORS as string[]).includes(result.color)
-      ? (result.color as Color)
-      : undefined;
-  const season =
-    result.season && (SEASONS as string[]).includes(result.season)
-      ? (result.season as Season)
-      : undefined;
+  const category = fuzzyMatch(result.category, CATEGORIES as readonly Category[]);
+  const color = fuzzyMatch(result.color, COLORS as readonly Color[]);
+  const season = fuzzyMatch(result.season, SEASONS as readonly Season[]);
   const occasions = Array.isArray(result.occasions)
-    ? result.occasions.filter((value): value is Occasion =>
-        (OCCASIONS as string[]).includes(value),
-      )
+    ? result.occasions
+        .map((v) => fuzzyMatch(v, OCCASIONS as readonly Occasion[]))
+        .filter((v): v is Occasion => v !== undefined)
     : undefined;
 
   return {
@@ -44,15 +61,28 @@ function sanitize(result: AutoTagResult): AutoTagResult {
 }
 
 function taggingPrompt() {
-  return `Identify the clothing item in this photo. Reply with JSON only:
+  return `You are a fashion expert analyzing a clothing photo. Look carefully at the garment and identify it accurately.
+
+IMPORTANT:
+- Look at the ACTUAL dominant color of the garment (not the background).
+- Identify the correct category based on the garment type.
+- Be precise — if it's blue, say Blue. If it's navy/dark blue, say Navy. If pink, say Pink. Don't confuse colors.
+
+Reply with this exact JSON structure:
 {
-  "title": "short descriptive name",
+  "title": "short descriptive name (e.g. Navy Slim Fit Shirt)",
   "category": one of ${JSON.stringify(CATEGORIES)},
   "color": one of ${JSON.stringify(COLORS)},
-  "occasions": array from ${JSON.stringify(OCCASIONS)},
+  "occasions": array of 1-3 values from ${JSON.stringify(OCCASIONS)},
   "season": one of ${JSON.stringify(SEASONS)},
-  "brand": "brand if visible else empty string"
-}`;
+  "brand": "brand name if visible on the garment, else empty string"
+}
+
+Rules:
+- For color: pick the DOMINANT color of the clothing fabric, ignoring buttons/zippers/background.
+- For category: match the garment type to the closest option. A polo/t-shirt is "T-Shirt", a formal shirt is "Shirt", a dress is "One-Piece", etc.
+- For occasions: pick what this item is suitable for (can be multiple).
+- For season: "All-Season" if it works year-round.`;
 }
 
 function parseDataUrl(image: string): { mime: string; data: string } | null {
@@ -96,7 +126,7 @@ async function tagWithGemini(image: string): Promise<AutoTagResult | null> {
           },
         ],
         generationConfig: {
-          temperature: 0.2,
+          temperature: 0.1,
           maxOutputTokens: 256,
           responseMimeType: 'application/json',
         },
@@ -131,7 +161,7 @@ async function tagWithOpenAI(image: string): Promise<AutoTagResult | null> {
     },
     body: JSON.stringify({
       model: process.env.OPENAI_VISION_MODEL || 'gpt-4o-mini',
-      temperature: 0.2,
+      temperature: 0.1,
       messages: [
         {
           role: 'user',
@@ -154,10 +184,6 @@ async function tagWithOpenAI(image: string): Promise<AutoTagResult | null> {
   return parseJsonLoose(payload.choices?.[0]?.message?.content ?? '');
 }
 
-/**
- * Vision auto-tag: Gemini (GEMINI_API_KEY) first, then OpenAI.
- * Without either key, returns 501 for client-side heuristic fallback.
- */
 export async function POST(request: Request) {
   const hasGemini = Boolean(process.env.GEMINI_API_KEY);
   const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
