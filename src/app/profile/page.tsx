@@ -4,10 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import type { Gender } from '@/types';
 
 export default function ProfilePage() {
-  const { user, gender, setGender, configured, signOut } = useAuth();
+  const { user, gender, configured, signOut } = useAuth();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -54,38 +53,20 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleGenderChange(g: Gender) {
-    await setGender(g);
-    setMessage(`Gender updated to ${g}.`);
-  }
-
   return (
     <div className="mx-auto w-full max-w-lg px-4 py-8 sm:px-6 sm:py-10">
       <h1 className="font-display text-2xl font-semibold tracking-tight">Profile</h1>
       <p className="mt-1 text-sm text-muted">{user.email}</p>
 
       <section className="mt-8 rounded-[1.5rem] border border-border/60 bg-surface-elevated/80 p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Preferences</h2>
-          <p className="mt-1 text-sm text-muted">
-            Update how the app categorizes and suggests clothing for you.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          {(['female', 'male'] as const).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => void handleGenderChange(g)}
-              className={`flex-1 cursor-pointer rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
-                gender === g
-                  ? 'border-accent bg-accent text-white'
-                  : 'border-border bg-surface text-foreground hover:border-accent/50'
-              }`}
-            >
-              {g === 'female' ? 'Female' : 'Male'}
-            </button>
-          ))}
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+          Profile type
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Set when you signed in. Sign out and sign in again to use a different profile.
+        </p>
+        <div className="mt-4 inline-flex rounded-xl border border-accent/30 bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent">
+          {gender === 'male' ? 'Male' : gender === 'female' ? 'Female' : 'Not set'}
         </div>
       </section>
 

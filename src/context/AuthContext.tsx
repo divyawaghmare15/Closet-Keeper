@@ -19,7 +19,7 @@ interface AuthContextValue {
   user: User | null;
   gender: Gender | null;
   setGender: (g: Gender) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, gender: Gender) => Promise<void>;
   signUp: (email: string, password: string, gender: Gender) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await supabase.auth.updateUser({ data: { gender: g } });
         }
       },
-      async signIn(email, password) {
+      async signIn(email, password, g) {
         const supabase = getSupabaseBrowserClient();
         if (!supabase) throw new Error('Supabase is not configured');
         const { error } = await supabase.auth.signInWithPassword({
@@ -109,6 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password,
         });
         if (error) throw error;
+        localStorage.setItem(GENDER_LS_KEY, g);
+        setGenderState(g);
+        await supabase.auth.updateUser({ data: { gender: g } });
       },
       async signUp(email, password, g) {
         const supabase = getSupabaseBrowserClient();
@@ -127,6 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!supabase) return;
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
+        localStorage.removeItem(GENDER_LS_KEY);
+        setGenderState(null);
+        setUser(null);
       },
     }),
     [configured, loading, user, gender],

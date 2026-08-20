@@ -63,15 +63,16 @@ export default function AuthPage() {
     setMessage('');
 
     try {
+      if (!selectedGender) {
+        setError('Please select Male or Female to continue.');
+        setBusy(false);
+        return;
+      }
+
       if (mode === 'signin') {
-        await signIn(email.trim(), password);
+        await signIn(email.trim(), password, selectedGender);
         router.push('/');
       } else {
-        if (!selectedGender) {
-          setError('Please select Male or Female to continue.');
-          setBusy(false);
-          return;
-        }
         await signUp(email.trim(), password, selectedGender);
         setMessage(
           'Account created. If email confirmation is enabled in Supabase, check your inbox before signing in.',
@@ -93,6 +94,9 @@ export default function AuthPage() {
         </h1>
         <p className="mt-2 text-sm text-muted">
           Your wardrobe items sync to Supabase when you are signed in.
+          {mode === 'signin'
+            ? ' Choose who is signing in so categories and suggestions stay correct.'
+            : ' Choose your profile so the app personalizes categories correctly.'}
         </p>
       </div>
 
@@ -138,27 +142,27 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {mode === 'signup' && (
-          <fieldset className="space-y-1.5">
-            <legend className="text-sm font-semibold">I am</legend>
-            <div className="flex gap-3">
-              {(['female', 'male'] as const).map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => setSelectedGender(g)}
-                  className={`flex-1 cursor-pointer rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
-                    selectedGender === g
-                      ? 'border-accent bg-accent text-white'
-                      : 'border-border bg-surface text-foreground hover:border-accent/50'
-                  }`}
-                >
-                  {g === 'female' ? 'Female' : 'Male'}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-        )}
+        <fieldset className="space-y-1.5">
+          <legend className="text-sm font-semibold">
+            {mode === 'signin' ? 'Signing in as' : 'I am'}
+          </legend>
+          <div className="flex gap-3">
+            {(['female', 'male'] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setSelectedGender(g)}
+                className={`flex-1 cursor-pointer rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                  selectedGender === g
+                    ? 'border-accent bg-accent text-white'
+                    : 'border-border bg-surface text-foreground hover:border-accent/50'
+                }`}
+              >
+                {g === 'female' ? 'Female' : 'Male'}
+              </button>
+            ))}
+          </div>
+        </fieldset>
 
         {error && (
           <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
