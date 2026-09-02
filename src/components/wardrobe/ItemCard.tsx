@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Badge, CleanBadge } from '@/components/common/Badge';
 import type { ClothingItem } from '@/types';
 
@@ -14,6 +16,7 @@ export function ItemCard({
   onDelete: () => void;
   onEdit: () => void;
 }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const meta = [
     item.category,
     item.color,
@@ -87,7 +90,7 @@ export function ItemCard({
           </button>
           <button
             type="button"
-            onClick={onDelete}
+            onClick={() => setConfirmOpen(true)}
             aria-label={`Delete ${item.title}`}
             className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition hover:bg-red-50 hover:text-red-700"
           >
@@ -95,6 +98,57 @@ export function ItemCard({
           </button>
         </div>
       </div>
+
+      {confirmOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
+            role="presentation"
+            onClick={() => setConfirmOpen(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`delete-item-${item.id}`}
+              className="w-full max-w-sm rounded-2xl border border-border/60 bg-surface-elevated p-6 shadow-xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h3
+                id={`delete-item-${item.id}`}
+                className="font-display text-lg font-semibold text-foreground"
+              >
+                Delete this item?
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">
+                Are you sure you want to delete{' '}
+                <span className="font-semibold text-foreground">
+                  {item.title}
+                </span>
+                ? This can&apos;t be undone.
+              </p>
+              <div className="mt-5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmOpen(false)}
+                  className="flex-1 rounded-xl bg-surface px-4 py-2.5 text-sm font-semibold text-foreground ring-1 ring-border transition hover:bg-accent-soft/50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmOpen(false);
+                    onDelete();
+                  }}
+                  className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </article>
   );
 }
