@@ -7,7 +7,8 @@ import {
   compressDataUrl,
   cropDataUrl,
   fileToDataUrl,
-  softenBackground,
+  flattenOnWhite,
+  removeBackgroundSmart,
 } from '@/lib/imageProcess';
 
 export function ImageUploader({
@@ -16,12 +17,16 @@ export function ImageUploader({
   onProcessed,
   multiple = false,
   onMultiple,
+  autoRemoveBackground,
+  onAutoRemoveBackgroundChange,
 }: {
   imageUrl: string;
   onChange: (dataUrl: string) => void;
   onProcessed?: (dataUrl: string) => void;
   multiple?: boolean;
   onMultiple?: (files: File[]) => void;
+  autoRemoveBackground: boolean;
+  onAutoRemoveBackgroundChange: (value: boolean) => void;
 }) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -29,6 +34,7 @@ export function ImageUploader({
   const [originalRaw, setOriginalRaw] = useState('');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [isDragOver, setIsDragOver] = useState(false);
 
   async function beginWithFile(file: File) {
     if (!file.type.startsWith('image/')) return;
@@ -61,6 +67,7 @@ export function ImageUploader({
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
+    setIsDragOver(false);
     void handleFiles(event.dataTransfer.files);
   }
 
@@ -77,10 +84,23 @@ export function ImageUploader({
   }
 
   async function finishProcessed(source: string) {
-    setBusy('Compressing…');
-    const compressed = await compressDataUrl(source);
-    onChange(compressed);
-    onProcessed?.(compressed);
+    try {
+      let processed = source;
+      if (autoRemoveBackground) {
+        setBusy('Removing background…');
+        processed = await removeBackgroundSmart(source);
+        processed = await flattenOnWhite(processed);
+      } else {
+        setBusy('Compressing…');
+      }
+      const compressed = await compressDataUrl(processed);
+      onChange(compressed);
+      onProcessed?.(compressed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not process photo');
+    } finally {
+      setBusy('');
+    }
   }
 
   async function applyCrop(crop: {
@@ -96,7 +116,6 @@ export function ImageUploader({
       await finishProcessed(cropped);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not process photo');
-    } finally {
       setBusy('');
     }
   }
@@ -108,119 +127,124 @@ export function ImageUploader({
       await finishProcessed(source);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not process photo');
-    } finally {
       setBusy('');
     }
   }
 
-  async function softenOnDemand() {
-    if (!imageUrl) return;
-    try {
-      setBusy('Softening background…');
-      const softened = await softenBackground(imageUrl);
-      const compressed = await compressDataUrl(softened);
-      onChange(compressed);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not soften background',
-      );
-    } finally {
-      setBusy('');
-    }
+  function openGallery() {
+    galleryInputRef.current?.click();
   }
 
   return (
-    <div>
-      <div className="mb-2">
-        <p className="text-sm font-semibold">Photo</p>
-      </div>
-
+    <div className="flex h-full min-h-[280px] flex-col md:min-h-[calc(100svh-11rem)]">
       <div
-        onDragOver={(event) => event.preventDefault()}
+        role="button"
+        tabIndex={0}
+        onClick={() => {
+          if (!imageUrl && !busy) openGallery();
+        }}
+        onKeyDown={(event) => {
+          if ((event.key === 'Enter' || event.key === ' ') && !imageUrl && !busy) {
+            event.preventDefault();
+            openGallery();
+          }
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setIsDragOver(true);
+        }}
+        onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
-        className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[1.25rem] border border-dashed border-border bg-white sm:aspect-[4/3] md:aspect-[3/4] md:max-h-[420px]"
+        className={`relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed p-6 transition-colors ${
+          isDragOver
+            ? 'border-purple-400 bg-purple-50'
+            : 'border-slate-300 bg-slate-50 hover:bg-purple-50'
+        } ${imageUrl ? 'cursor-default' : ''}`}
       >
         {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt="Selected clothing preview"
-            className="h-full w-full object-contain"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt="Selected clothing preview"
+              className="absolute inset-0 h-full w-full object-contain p-4"
+            />
+            <div className="absolute right-3 top-3 flex gap-2">
+              {originalRaw && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    reCrop();
+                  }}
+                  disabled={Boolean(busy)}
+                  className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60"
+                >
+                  Re-crop
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  clearPhoto();
+                }}
+                disabled={Boolean(busy)}
+                aria-label="Delete photo"
+                className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-red-700 shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60"
+              >
+                Remove
+              </button>
+            </div>
+          </>
         ) : (
-          <span className="px-4 text-center text-sm text-muted">
-            Use the camera for the sharpest catalog shots
-          </span>
+          <div className="flex flex-col items-center text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-accent shadow-sm ring-1 ring-purple-100">
+              <HangerIcon />
+            </div>
+            <p className="mt-4 max-w-xs text-sm font-bold text-foreground">
+              Drag &amp; drop clothing photo, or click to browse
+            </p>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                cameraInputRef.current?.click();
+              }}
+              disabled={Boolean(busy)}
+              className="mt-3 text-sm font-semibold text-accent underline-offset-2 hover:underline disabled:opacity-60"
+            >
+              📷 Use Camera
+            </button>
+          </div>
         )}
 
         {busy && (
-          <div className="absolute inset-0 flex items-center justify-center bg-foreground/50 px-4 text-center text-sm font-semibold text-white">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-foreground/50 px-4 text-center text-sm font-semibold text-white">
             {busy}
           </div>
         )}
-      </div>
 
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          onClick={() => cameraInputRef.current?.click()}
-          disabled={Boolean(busy)}
-          className="min-w-0 flex-1 cursor-pointer rounded-2xl bg-accent px-3 py-3 text-sm font-semibold text-white disabled:opacity-60"
+        <label
+          className={`absolute bottom-4 left-1/2 flex -translate-x-1/2 cursor-pointer items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm ring-1 transition ${
+            autoRemoveBackground
+              ? 'bg-accent text-white ring-accent/40'
+              : 'bg-white/95 text-muted ring-border/60 hover:text-foreground'
+          }`}
+          onClick={(event) => event.stopPropagation()}
         >
-          Take photo
-        </button>
-        <button
-          type="button"
-          onClick={() => galleryInputRef.current?.click()}
-          disabled={Boolean(busy)}
-          className="min-w-0 flex-1 cursor-pointer rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
-        >
-          {multiple ? 'Gallery / bulk' : 'From gallery'}
-        </button>
-        {imageUrl && (
-          <button
-            type="button"
-            onClick={clearPhoto}
-            disabled={Boolean(busy)}
-            aria-label="Delete photo"
-            title="Delete photo"
-            className="flex shrink-0 cursor-pointer items-center justify-center rounded-2xl bg-surface px-3 py-3 text-red-700 ring-1 ring-border disabled:opacity-60 hover:bg-red-50"
-          >
-            <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
-              <path
-                d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        )}
+          <input
+            type="checkbox"
+            className="sr-only"
+            checked={autoRemoveBackground}
+            onChange={(event) =>
+              onAutoRemoveBackgroundChange(event.target.checked)
+            }
+          />
+          <span aria-hidden>✨</span>
+          Auto-remove background
+        </label>
       </div>
-
-      {imageUrl && (
-        <div className="mt-2 flex gap-2">
-          {originalRaw && (
-            <button
-              type="button"
-              onClick={reCrop}
-              disabled={Boolean(busy)}
-              className="flex-1 cursor-pointer rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
-            >
-              Re-crop
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => void softenOnDemand()}
-            disabled={Boolean(busy)}
-            className="flex-1 cursor-pointer rounded-2xl bg-surface px-3 py-3 text-sm font-semibold ring-1 ring-border disabled:opacity-60"
-          >
-            Soften BG
-          </button>
-        </div>
-      )}
 
       {error && (
         <p className="mt-2 text-sm text-red-700" role="alert">
@@ -260,5 +284,25 @@ export function ImageUploader({
           document.body,
         )}
     </div>
+  );
+}
+
+function HangerIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-7 w-7"
+      aria-hidden
+    >
+      <path d="M12 3a2 2 0 0 1 2 2v1.5" />
+      <path d="M6.5 9.5 12 6l5.5 3.5" />
+      <path d="M4 20h16L12 9 4 20z" />
+    </svg>
   );
 }
