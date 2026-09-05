@@ -1,20 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { OutfitCard } from '@/components/generator/OutfitCard';
 import { OCCASIONS, SEASONS } from '@/lib/constants';
 import { suggestOutfitsFromCloset } from '@/lib/suggestOutfits';
 import type { ClothingItem, Occasion, Outfit, Season } from '@/types';
 
+function occasionFromUrl(): Occasion {
+  if (typeof window === 'undefined') return 'Casual';
+  const raw = new URLSearchParams(window.location.search).get('occasion');
+  if (raw && (OCCASIONS as string[]).includes(raw)) return raw as Occasion;
+  return 'Casual';
+}
+
+function seasonFromUrl(): Season | 'Any' {
+  if (typeof window === 'undefined') return 'Any';
+  const raw = new URLSearchParams(window.location.search).get('season');
+  if (raw === 'Any') return 'Any';
+  if (raw && (SEASONS as string[]).includes(raw)) return raw as Season;
+  return 'Any';
+}
+
 export function OutfitSuggestions({
   items,
   onSave,
+  defaultOccasion = 'Casual',
 }: {
   items: ClothingItem[];
   onSave: (outfit: Outfit) => Promise<void> | void;
+  defaultOccasion?: Occasion;
 }) {
-  const [occasion, setOccasion] = useState<Occasion>('Office');
+  const [occasion, setOccasion] = useState<Occasion>(defaultOccasion);
   const [season, setSeason] = useState<Season | 'Any'>('Any');
   const [cleanOnly, setCleanOnly] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -22,6 +39,11 @@ export function OutfitSuggestions({
   const [source, setSource] = useState<'ai' | 'rules' | null>(null);
   const [suggestions, setSuggestions] = useState<Outfit[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setOccasion(occasionFromUrl());
+    setSeason(seasonFromUrl());
+  }, []);
 
   const cleanCount = items.filter((item) => item.isClean).length;
   const poolCount = cleanOnly ? cleanCount : items.length;

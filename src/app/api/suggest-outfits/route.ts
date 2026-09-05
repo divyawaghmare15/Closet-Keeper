@@ -60,11 +60,13 @@ ${JSON.stringify(catalog)}
 Rules:
 - Use only item ids from the list. Never invent items.
 - Prefer isClean true. Skip in-wash pieces unless nothing else works.
-- Core look: Top + Bottom, or Kurti + Bottom, or Corset + Bottom, or Saree / One-Piece alone.
-- Then optionally add Layer, Footwear, or Accessory if they exist and match.
+- Core look (works for male and female closets):
+  • Upper + lower: Top/Kurti/Corset/Shirt/T-Shirt/Ethnic + Bottom/Jeans/Trousers/Shorts
+  • Or a standalone: One-Piece, Saree, Suit, or Swimwear alone
+- Then optionally add Layer/Jacket/Blazer/Hoodie, Footwear, or Accessory if they match.
 - Avoid color clashes: Red+Green, Red+Blue, Green+Blue. Neutrals (Black, White, Beige) pair with anything.
 - Prefer items with daysSinceWorn null (never worn) or a high number.
-- Each outfit 2–5 pieces (1 is ok for a saree/one-piece).
+- Each outfit 2–5 pieces (1 is ok for a saree/one-piece/suit).
 - Titles short. Reason one sentence, practical.
 
 Reply with JSON only:
@@ -125,6 +127,7 @@ function catalogToItems(catalog: OutfitCatalogItem[]): ClothingItem[] {
       item.daysSinceWorn === null
         ? null
         : new Date(Date.now() - item.daysSinceWorn * 86400000).toISOString(),
+    wearCount: 0,
     createdAt: new Date().toISOString(),
     brand: item.brand,
     size: '',
@@ -274,7 +277,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            'Need at least a top and bottom, or a saree / one-piece, tagged for this occasion.',
+            'Need at least an upper + lower (e.g. Shirt + Jeans or Top + Bottom), or a one-piece / saree / suit, tagged for this occasion.',
           detail,
         },
         { status: 422 },

@@ -83,15 +83,19 @@ export function ImageUploader({
     setPendingRaw(originalRaw);
   }
 
-  async function finishProcessed(source: string) {
+  async function finishProcessed(
+    source: string,
+    options?: { removeBackground?: boolean },
+  ) {
+    const shouldRemove = options?.removeBackground ?? autoRemoveBackground;
     try {
       let processed = source;
-      if (autoRemoveBackground) {
+      if (shouldRemove) {
         setBusy('Removing background…');
         processed = await removeBackgroundSmart(source);
         processed = await flattenOnWhite(processed);
       } else {
-        setBusy('Compressing…');
+        setBusy('Saving photo…');
       }
       const compressed = await compressDataUrl(processed);
       onChange(compressed);
@@ -129,6 +133,11 @@ export function ImageUploader({
       setError(err instanceof Error ? err.message : 'Could not process photo');
       setBusy('');
     }
+  }
+
+  async function removeBackgroundNow() {
+    if (!imageUrl || busy) return;
+    await finishProcessed(imageUrl, { removeBackground: true });
   }
 
   function openGallery() {
@@ -169,7 +178,7 @@ export function ImageUploader({
               alt="Selected clothing preview"
               className="absolute inset-0 h-full w-full object-contain p-4"
             />
-            <div className="absolute right-3 top-3 flex gap-2">
+            <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-2">
               {originalRaw && (
                 <button
                   type="button"
@@ -183,6 +192,17 @@ export function ImageUploader({
                   Re-crop
                 </button>
               )}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void removeBackgroundNow();
+                }}
+                disabled={Boolean(busy)}
+                className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-accent shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60"
+              >
+                Remove BG
+              </button>
               <button
                 type="button"
                 onClick={(event) => {
@@ -224,26 +244,43 @@ export function ImageUploader({
             {busy}
           </div>
         )}
+      </div>
 
-        <label
-          className={`absolute bottom-4 left-1/2 flex -translate-x-1/2 cursor-pointer items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm ring-1 transition ${
+      <div className="mt-3 space-y-1.5">
+        <button
+          type="button"
+          onClick={() => onAutoRemoveBackgroundChange(!autoRemoveBackground)}
+          className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left transition ${
             autoRemoveBackground
-              ? 'bg-accent text-white ring-accent/40'
-              : 'bg-white/95 text-muted ring-border/60 hover:text-foreground'
+              ? 'border-accent/40 bg-accent-soft/70'
+              : 'border-border/70 bg-surface'
           }`}
-          onClick={(event) => event.stopPropagation()}
         >
-          <input
-            type="checkbox"
-            className="sr-only"
-            checked={autoRemoveBackground}
-            onChange={(event) =>
-              onAutoRemoveBackgroundChange(event.target.checked)
-            }
-          />
-          <span aria-hidden>✨</span>
-          Auto-remove background
-        </label>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              {autoRemoveBackground
+                ? 'Remove background after crop'
+                : 'Keep original photo (crop only)'}
+            </p>
+            <p className="mt-0.5 text-xs text-muted">
+              {autoRemoveBackground
+                ? 'Background will be removed after you crop.'
+                : 'Default: crop and keep your photo as-is. Turn on only if you want a cutout.'}
+            </p>
+          </div>
+          <span
+            className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
+              autoRemoveBackground ? 'bg-accent' : 'bg-border'
+            }`}
+            aria-hidden
+          >
+            <span
+              className={`absolute left-0.5 size-6 rounded-full bg-white shadow transition ${
+                autoRemoveBackground ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </span>
+        </button>
       </div>
 
       {error && (
@@ -273,6 +310,7 @@ export function ImageUploader({
         createPortal(
           <ImageCropper
             imageUrl={pendingRaw}
+            removeBackgroundHint={autoRemoveBackground}
             onCancel={() => setPendingRaw('')}
             onSkip={() => {
               void skipCropAndProcess();

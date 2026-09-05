@@ -20,6 +20,7 @@ type ClothingRow = {
   color: string;
   is_clean: boolean;
   last_worn_date: string | null;
+  wear_count?: number | null;
   created_at: string;
   brand: string;
   size: string;
@@ -38,6 +39,7 @@ function rowToItem(row: ClothingRow): ClothingItem | null {
     color: row.color,
     isClean: row.is_clean,
     lastWornDate: row.last_worn_date,
+    wearCount: row.wear_count ?? (row.last_worn_date ? 1 : 0),
     createdAt: row.created_at,
     brand: row.brand,
     size: row.size,
@@ -270,13 +272,48 @@ export async function markItemsWorn(
   const userId = await requireUserId();
   const supabase = getSupabaseBrowserClient()!;
 
-  const { error } = await supabase
+  // Read current wear counts so we can increment without a DB RPC.
+  const { data: rows, error: readError } = await supabase
     .from('clothing_items')
-    .update({ last_worn_date: wornAt, is_clean: false })
+    .select('id, wear_count')
     .in('id', ids)
     .eq('user_id', userId);
 
-  if (error) throw new Error(error.message);
+  if (readError) throw new Error(readError.message);
+
+  const countById = new Map(
+    (rows ?? []).map((row) => [
+      row.id as string,
+      typeof row.wear_count === 'number' ? row.wear_count : 0,
+    ]),
+  );
+
+  for (const id of ids) {
+    const nextCount = (countById.get(id) ?? 0) + 1;
+    const { error } = await supabase
+      .from('clothing_items')
+      .update({
+        last_worn_date: wornAt,
+        is_clean: false,
+        wear_count: nextCount,
+      })
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      // Fallback if wear_count column not migrated yet
+      if (error.message.toLowerCase().includes('wear_count')) {
+        const { error: fallbackError } = await supabase
+          .from('clothing_items')
+          .update({ last_worn_date: wornAt, is_clean: false })
+          .eq('id', id)
+          .eq('user_id', userId);
+        if (fallbackError) throw new Error(fallbackError.message);
+      } else {
+        throw new Error(error.message);
+      }
+    }
+  }
 }
 
 /** One-time helper: push browser localStorage items into the signed-in cloud closet. */

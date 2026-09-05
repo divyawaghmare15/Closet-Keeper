@@ -20,6 +20,7 @@ export function ImageCropper({
   onCancel,
   onSkip,
   onConfirm,
+  removeBackgroundHint = false,
 }: {
   imageUrl: string;
   onCancel: () => void;
@@ -30,6 +31,8 @@ export function ImageCropper({
     width: number;
     height: number;
   }) => void;
+  /** When true, crop confirm will also remove background. */
+  removeBackgroundHint?: boolean;
 }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const [natural, setNatural] = useState({ width: 0, height: 0 });
@@ -246,22 +249,29 @@ export function ImageCropper({
       </div>
 
       {/* Footer */}
-      <div className="flex shrink-0 gap-3 px-4 py-3 sm:justify-center sm:px-5 sm:py-4">
-        <button
-          type="button"
-          onClick={onSkip}
-          className="flex-1 cursor-pointer rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20 sm:max-w-[180px]"
-        >
-          Skip crop
-        </button>
-        <button
-          type="button"
-          onClick={confirm}
-          disabled={!canConfirm}
-          className="flex-1 cursor-pointer rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[180px]"
-        >
-          {canConfirm ? 'Crop' : 'Loading…'}
-        </button>
+      <div className="flex shrink-0 flex-col gap-2 px-4 py-3 sm:items-center sm:px-5 sm:py-4">
+        <p className="text-center text-xs text-white/70">
+          {removeBackgroundHint
+            ? 'Next: background will be removed'
+            : 'Next: keep original photo (crop only)'}
+        </p>
+        <div className="flex w-full gap-3 sm:justify-center">
+          <button
+            type="button"
+            onClick={onSkip}
+            className="flex-1 cursor-pointer rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20 sm:max-w-[180px]"
+          >
+            Skip crop
+          </button>
+          <button
+            type="button"
+            onClick={confirm}
+            disabled={!canConfirm}
+            className="flex-1 cursor-pointer rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[180px]"
+          >
+            {canConfirm ? 'Crop' : 'Loading…'}
+          </button>
+        </div>
       </div>
     </div>
   );

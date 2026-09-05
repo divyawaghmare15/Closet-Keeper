@@ -55,7 +55,8 @@ const DEFAULT_FILTERS: FilterState = {
   category: 'All',
   occasion: 'All',
   season: 'All',
-  isCleanOnly: false,
+  cleanStatus: 'all',
+  sortBy: 'newest',
   searchQuery: '',
 };
 
@@ -101,7 +102,7 @@ function applyFilters(
 ): ClothingItem[] {
   const query = filters.searchQuery.trim().toLowerCase();
 
-  return items.filter((item) => {
+  const filtered = items.filter((item) => {
     if (filters.category !== 'All' && item.category !== filters.category) {
       return false;
     }
@@ -117,7 +118,11 @@ function applyFilters(
       return false;
     }
 
-    if (filters.isCleanOnly && !item.isClean) {
+    if (filters.cleanStatus === 'clean' && !item.isClean) {
+      return false;
+    }
+
+    if (filters.cleanStatus === 'laundry' && item.isClean) {
       return false;
     }
 
@@ -141,6 +146,28 @@ function applyFilters(
 
     return true;
   });
+
+  const sorted = [...filtered];
+  if (filters.sortBy === 'least-worn') {
+    sorted.sort((a, b) => {
+      const aTime = a.lastWornDate ? new Date(a.lastWornDate).getTime() : 0;
+      const bTime = b.lastWornDate ? new Date(b.lastWornDate).getTime() : 0;
+      return aTime - bTime;
+    });
+  } else if (filters.sortBy === 'recently-worn') {
+    sorted.sort((a, b) => {
+      const aTime = a.lastWornDate ? new Date(a.lastWornDate).getTime() : 0;
+      const bTime = b.lastWornDate ? new Date(b.lastWornDate).getTime() : 0;
+      return bTime - aTime;
+    });
+  } else {
+    sorted.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }
+
+  return sorted;
 }
 
 export function WardrobeProvider({ children }: { children: ReactNode }) {

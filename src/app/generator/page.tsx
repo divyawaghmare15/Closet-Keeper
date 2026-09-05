@@ -75,7 +75,7 @@ export default function GeneratorPage() {
             tab === 'saved' ? 'bg-accent text-white' : 'text-muted'
           }`}
         >
-          Saved ({savedOutfits.length})
+          Saved ({resolvedSaved.length})
         </button>
       </div>
 

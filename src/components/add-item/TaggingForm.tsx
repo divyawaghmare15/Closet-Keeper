@@ -70,7 +70,10 @@ export function TaggingForm() {
   const [showMoreOccasions, setShowMoreOccasions] = useState(false);
   const [isClean, setIsClean] = useState(true);
   const [imageUrl, setImageUrl] = useState('');
-  const [autoRemoveBackground, setAutoRemoveBackground] = useState(true);
+  const [autoRemoveBackground, setAutoRemoveBackground] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('ck_auto_remove_bg') === '1';
+  });
   const [brand, setBrand] = useState('');
   const [size, setSize] = useState<Size>('');
   const [season, setSeason] = useState<Season>('All-Season');
@@ -156,6 +159,7 @@ export function TaggingForm() {
         occasions,
         isClean,
         lastWornDate: null,
+        wearCount: 0,
         createdAt: new Date().toISOString(),
         brand: brand.trim(),
         size,
@@ -209,7 +213,10 @@ export function TaggingForm() {
           <ImageUploader
             imageUrl={imageUrl}
             autoRemoveBackground={autoRemoveBackground}
-            onAutoRemoveBackgroundChange={setAutoRemoveBackground}
+            onAutoRemoveBackgroundChange={(value) => {
+              setAutoRemoveBackground(value);
+              localStorage.setItem('ck_auto_remove_bg', value ? '1' : '0');
+            }}
             onChange={(url) => {
               setImageUrl(url);
               if (!url) {

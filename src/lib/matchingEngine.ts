@@ -1,19 +1,19 @@
-import { COLOR_CLASHES, NEUTRAL_COLORS } from '@/lib/constants';
+import {
+  COLOR_CLASHES,
+  NEUTRAL_COLORS,
+  isBottomCategory,
+  isLayerCategory,
+  isOnePieceCategory,
+  isTopCategory,
+} from '@/lib/constants';
 import type { ClothingItem, Color, Occasion, Outfit, Season } from '@/types';
 
 function bucketByCategory(items: ClothingItem[]) {
   return {
-    tops: items.filter(
-      (item) =>
-        item.category === 'Top' ||
-        item.category === 'Kurti' ||
-        item.category === 'Corset',
-    ),
-    bottoms: items.filter((item) => item.category === 'Bottom'),
-    onePieces: items.filter(
-      (item) => item.category === 'One-Piece' || item.category === 'Saree',
-    ),
-    layers: items.filter((item) => item.category === 'Layer'),
+    tops: items.filter((item) => isTopCategory(item.category)),
+    bottoms: items.filter((item) => isBottomCategory(item.category)),
+    onePieces: items.filter((item) => isOnePieceCategory(item.category)),
+    layers: items.filter((item) => isLayerCategory(item.category)),
     footwear: items.filter((item) => item.category === 'Footwear'),
     accessories: items.filter((item) => item.category === 'Accessory'),
   };

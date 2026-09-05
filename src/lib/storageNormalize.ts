@@ -66,6 +66,14 @@ export function normalizeItem(value: unknown): ClothingItem | null {
     color: item.color,
     isClean: item.isClean,
     lastWornDate: item.lastWornDate as string | null,
+    wearCount:
+      typeof item.wearCount === 'number' &&
+      Number.isFinite(item.wearCount) &&
+      item.wearCount >= 0
+        ? Math.floor(item.wearCount)
+        : item.lastWornDate
+          ? 1
+          : 0,
     createdAt: item.createdAt,
     brand: typeof item.brand === 'string' ? item.brand : '',
     size: isSize(item.size) ? item.size : '',

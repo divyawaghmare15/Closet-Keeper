@@ -90,6 +90,8 @@ export interface ClothingItem {
   color: Color;
   isClean: boolean;
   lastWornDate: string | null;
+  /** Times marked worn; used for cost-per-wear. */
+  wearCount: number;
   createdAt: string;
   brand: string;
   size: Size;
@@ -156,7 +158,10 @@ export interface FilterState {
   category: Category | 'All';
   occasion: Occasion | 'All';
   season: Season | 'All';
-  isCleanOnly: boolean;
+  /** all = no clean filter; clean = ready; laundry = in wash */
+  cleanStatus: 'all' | 'clean' | 'laundry';
+  /** Wardrobe sort for rotation. */
+  sortBy: 'newest' | 'least-worn' | 'recently-worn';
   searchQuery: string;
 }
 

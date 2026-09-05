@@ -12,6 +12,7 @@ create table if not exists public.clothing_items (
   color text not null,
   is_clean boolean not null default true,
   last_worn_date timestamptz,
+  wear_count integer not null default 0,
   created_at timestamptz not null default now(),
   brand text not null default '',
   size text not null default '',

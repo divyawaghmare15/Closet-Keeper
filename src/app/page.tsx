@@ -3,8 +3,15 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { WeatherChip } from '@/components/common/WeatherChip';
 import { useAuth } from '@/context/AuthContext';
 import { useWardrobe } from '@/context/WardrobeContext';
+import {
+  isBottomCategory,
+  isLayerCategory,
+  isOnePieceCategory,
+  isTopCategory,
+} from '@/lib/constants';
 import type { ClothingItem } from '@/types';
 
 export default function HomePage() {
@@ -28,6 +35,7 @@ function HomeContent() {
   const { items, savedOutfits } = useWardrobe();
   const totalItems = items.length;
   const cleanItems = items.filter((item) => item.isClean);
+  const laundryCount = items.filter((item) => !item.isClean).length;
   const featured = pickFeaturedPair(cleanItems);
   const isEmpty = totalItems === 0;
   const canBuildOutfit = totalItems >= 2;
@@ -48,7 +56,7 @@ function HomeContent() {
                   Build your digital wardrobe
                 </h1>
                 <p className="mt-3 max-w-md text-base leading-relaxed text-muted sm:text-lg">
-                  Add your everyday staples to get calm, weather-ready outfit
+                  Add your everyday staples to get calm outfit
                   recommendations.
                 </p>
 
@@ -71,10 +79,14 @@ function HomeContent() {
                   need it.
                 </p>
 
+                <div className="mt-4">
+                  <WeatherChip />
+                </div>
+
                 <div className="mt-6 flex flex-wrap items-start gap-2 sm:mt-7 sm:gap-3">
                   {canBuildOutfit ? (
                     <Link
-                      href="/generator"
+                      href="/generator?occasion=Casual"
                       className="rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] sm:px-6 sm:py-3.5"
                     >
                       Build outfit
@@ -111,6 +123,7 @@ function HomeContent() {
             <StatBadges
               totalItems={totalItems}
               outfitCount={savedOutfits.length}
+              laundryCount={laundryCount}
             />
           </div>
 
@@ -137,9 +150,11 @@ function HomeContent() {
 function StatBadges({
   totalItems,
   outfitCount,
+  laundryCount,
 }: {
   totalItems: number;
   outfitCount: number;
+  laundryCount: number;
 }) {
   return (
     <div className="mt-6 flex flex-wrap items-center gap-2 sm:mt-8">
@@ -151,11 +166,18 @@ function StatBadges({
         <span className="text-muted">in Closet</span>
       </Link>
       <Link
-        href="/generator"
+        href="/generator?occasion=Casual"
         className="inline-flex items-center gap-1.5 rounded-full border border-purple-100/70 bg-white/60 px-3.5 py-1.5 text-sm shadow-sm backdrop-blur-sm transition hover:border-accent/30 hover:bg-white/80"
       >
         <span className="font-semibold text-foreground">{outfitCount}</span>
         <span className="text-muted">Outfits</span>
+      </Link>
+      <Link
+        href="/wardrobe?laundry=1"
+        className="inline-flex items-center gap-1.5 rounded-full border border-purple-100/70 bg-white/60 px-3.5 py-1.5 text-sm shadow-sm backdrop-blur-sm transition hover:border-accent/30 hover:bg-white/80"
+      >
+        <span className="font-semibold text-foreground">{laundryCount}</span>
+        <span className="text-muted">in Laundry</span>
       </Link>
     </div>
   );
@@ -204,21 +226,16 @@ function HangerIcon() {
 }
 
 function pickFeaturedPair(cleanItems: ClothingItem[]): ClothingItem[] {
-  const onePiece = cleanItems.find(
-    (item) => item.category === 'One-Piece' || item.category === 'Saree',
+  const onePiece = cleanItems.find((item) =>
+    isOnePieceCategory(item.category),
   );
   if (onePiece) {
-    const layer = cleanItems.find((item) => item.category === 'Layer');
+    const layer = cleanItems.find((item) => isLayerCategory(item.category));
     return layer ? [onePiece, layer] : [onePiece];
   }
 
-  const top = cleanItems.find(
-    (item) =>
-      item.category === 'Top' ||
-      item.category === 'Kurti' ||
-      item.category === 'Corset',
-  );
-  const bottom = cleanItems.find((item) => item.category === 'Bottom');
+  const top = cleanItems.find((item) => isTopCategory(item.category));
+  const bottom = cleanItems.find((item) => isBottomCategory(item.category));
   if (top && bottom) return [top, bottom];
   if (top) return [top];
   if (bottom) return [bottom];
@@ -253,17 +270,25 @@ function FeaturedStage({
     );
   }
 
+  const isPair = featured.length > 1;
+
   return (
     <div className="w-full overflow-hidden rounded-3xl border border-purple-100/70 bg-surface-elevated/80 shadow-[0_20px_50px_-28px_rgba(45,38,64,0.28)] backdrop-blur-sm">
       <div
-        className={`grid ${
-          featured.length > 1 ? 'grid-cols-2' : 'grid-cols-1'
-        }`}
+        className={
+          isPair
+            ? 'grid w-full grid-cols-2'
+            : 'flex w-full items-center justify-center bg-accent-soft/30'
+        }
       >
         {featured.map((item) => (
           <div
             key={item.id}
-            className="relative aspect-[3/4] overflow-hidden bg-accent-soft/40 sm:max-h-[480px]"
+            className={
+              isPair
+                ? 'relative h-[min(420px,52svh)] w-full overflow-hidden bg-accent-soft/40 sm:h-[min(480px,55svh)]'
+                : 'relative h-[min(420px,52svh)] w-full overflow-hidden sm:h-[min(480px,55svh)]'
+            }
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -276,7 +301,7 @@ function FeaturedStage({
             <img
               src={item.imageUrl}
               alt={item.title}
-              className="relative z-10 h-full w-full object-contain"
+              className="relative z-10 mx-auto h-full w-full object-contain object-center"
             />
             <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-foreground/55 to-transparent px-3 pb-3 pt-10 sm:px-4 sm:pb-4 sm:pt-12">
               <p className="truncate text-sm font-semibold text-white">

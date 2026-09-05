@@ -138,7 +138,9 @@ export function Header() {
               <ProfileMenu
                 email={user.email ?? 'User'}
                 onSignOut={() => {
-                  void signOut();
+                  void signOut().then(() => {
+                    window.location.assign('/auth');
+                  });
                 }}
               />
             ) : (

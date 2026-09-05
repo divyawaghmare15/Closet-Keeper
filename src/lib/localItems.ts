@@ -95,7 +95,12 @@ export function markLocalItemsWorn(
   const idSet = new Set(ids);
   const items = readItems().map((item) =>
     idSet.has(item.id)
-      ? { ...item, lastWornDate: wornAt, isClean: false }
+      ? {
+          ...item,
+          lastWornDate: wornAt,
+          isClean: false,
+          wearCount: (item.wearCount ?? 0) + 1,
+        }
       : item,
   );
   writeItems(items);

@@ -17,6 +17,7 @@ export function BackendBanner() {
   } = useWardrobe();
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState('');
+  const [dismissed, setDismissed] = useState(false);
 
   const localTotal =
     localItemCount + localOutfitCount + localCapsuleCount + localMiscCount;
@@ -48,7 +49,7 @@ export function BackendBanner() {
     );
   }
 
-  if (localTotal > 0) {
+  if (localTotal > 0 && !dismissed) {
     const parts = [
       localItemCount > 0
         ? `${localItemCount} item${localItemCount === 1 ? '' : 's'}`
@@ -65,39 +66,65 @@ export function BackendBanner() {
     ].filter(Boolean);
 
     return (
-      <div className="border-b border-border/50 bg-wash-soft/80 px-3 py-2.5 text-center text-xs leading-relaxed text-foreground sm:px-4 sm:text-sm">
-        Found {parts.join(', ')} in this browser.{' '}
-        <button
-          type="button"
-          disabled={importing}
-          onClick={() => {
-            setImporting(true);
-            setImportMessage('');
-            void importLocalToCloud()
-              .then((result) => {
-                const total =
-                  result.items +
-                  result.outfits +
-                  result.capsules +
-                  result.miscCards;
-                setImportMessage(
-                  total > 0
-                    ? `Imported ${result.items} items, ${result.outfits} outfits, ${result.miscCards} extras.`
-                    : 'Nothing to import.',
-                );
-              })
-              .catch((err) => {
-                setImportMessage(
-                  err instanceof Error ? err.message : 'Import failed',
-                );
-              })
-              .finally(() => setImporting(false));
-          }}
-          className="font-semibold text-accent hover:underline disabled:opacity-60"
-        >
-          {importing ? 'Importing…' : 'Import to cloud'}
-        </button>
-        {importMessage ? ` ${importMessage}` : null}
+      <div className="border-b border-wash/30 bg-wash-soft px-3 py-3 sm:px-4">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="min-w-0 text-left">
+            <p className="text-sm font-semibold text-foreground">
+              Browser clothes found — import before they get lost
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted sm:text-sm">
+              This device still has {parts.join(', ')} saved locally. Your cloud
+              closet is separate until you import.
+            </p>
+            {importMessage ? (
+              <p className="mt-1 text-xs font-medium text-accent sm:text-sm">
+                {importMessage}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={importing}
+              onClick={() => {
+                setImporting(true);
+                setImportMessage('');
+                void importLocalToCloud()
+                  .then((result) => {
+                    const total =
+                      result.items +
+                      result.outfits +
+                      result.capsules +
+                      result.miscCards;
+                    setImportMessage(
+                      total > 0
+                        ? `Imported ${result.items} items, ${result.outfits} outfits, ${result.miscCards} extras.`
+                        : 'Nothing to import.',
+                    );
+                    if (total > 0) {
+                      window.setTimeout(() => setDismissed(true), 1800);
+                    }
+                  })
+                  .catch((err) => {
+                    setImportMessage(
+                      err instanceof Error ? err.message : 'Import failed',
+                    );
+                  })
+                  .finally(() => setImporting(false));
+              }}
+              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-60"
+            >
+              {importing ? 'Importing…' : 'Import to cloud'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDismissed(true)}
+              className="rounded-xl px-3 py-2 text-sm font-semibold text-muted transition hover:bg-white/60 hover:text-foreground"
+            >
+              Later
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

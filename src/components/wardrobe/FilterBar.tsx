@@ -1,27 +1,81 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useWardrobe } from '@/context/WardrobeContext';
 import { categoriesForGender, OCCASIONS, SEASONS } from '@/lib/constants';
-import type { Category, Occasion, Season } from '@/types';
+import type { Category, FilterState, Occasion, Season } from '@/types';
 
 export function FilterBar() {
-  const { filters, setFilters } = useWardrobe();
+  const { filters, setFilters, items } = useWardrobe();
   const { gender } = useAuth();
   const genderCategories = categoriesForGender(gender);
   const CATEGORY_FILTERS: Array<Category | 'All'> = ['All', ...genderCategories];
   const OCCASION_FILTERS: Array<Occasion | 'All'> = ['All', ...OCCASIONS];
   const SEASON_FILTERS: Array<Season | 'All'> = ['All', ...SEASONS];
 
+  const laundryCount = items.filter((item) => !item.isClean).length;
+
   const hasActiveFilters =
     filters.category !== 'All' ||
     filters.occasion !== 'All' ||
     filters.season !== 'All' ||
-    filters.isCleanOnly;
+    filters.cleanStatus !== 'all' ||
+    filters.sortBy !== 'newest';
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {(
+          [
+            { id: 'all', label: 'All pieces' },
+            { id: 'clean', label: 'Clean' },
+            {
+              id: 'laundry',
+              label: laundryCount > 0 ? `Laundry (${laundryCount})` : 'Laundry',
+            },
+          ] as const
+        ).map((option) => (
+          <FilterPill
+            key={option.id}
+            label={option.label}
+            active={filters.cleanStatus === option.id}
+            onClick={() =>
+              setFilters((prev) => ({ ...prev, cleanStatus: option.id }))
+            }
+          />
+        ))}
+        <Link
+          href="/pack"
+          className="rounded-full bg-surface px-3.5 py-1.5 text-sm font-medium text-foreground ring-1 ring-border transition hover:bg-accent-soft"
+        >
+          Packing list
+        </Link>
+      </div>
+
+      <FilterRow label="Sort">
+        {(
+          [
+            { id: 'newest', label: 'Newest' },
+            { id: 'least-worn', label: 'Wear less often (rotate)' },
+            { id: 'recently-worn', label: 'Recently worn' },
+          ] as const
+        ).map((option) => (
+          <FilterPill
+            key={option.id}
+            label={option.label}
+            active={filters.sortBy === option.id}
+            onClick={() =>
+              setFilters((prev) => ({
+                ...prev,
+                sortBy: option.id as FilterState['sortBy'],
+              }))
+            }
+          />
+        ))}
+      </FilterRow>
+
       <FilterRow label="Category">
         {CATEGORY_FILTERS.map((category) => (
           <FilterPill
@@ -55,25 +109,8 @@ export function FilterBar() {
         ))}
       </FilterRow>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={() =>
-            setFilters((prev) => ({
-              ...prev,
-              isCleanOnly: !prev.isCleanOnly,
-            }))
-          }
-          className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
-            filters.isCleanOnly
-              ? 'bg-accent text-white'
-              : 'bg-surface text-foreground ring-1 ring-border hover:bg-accent-soft'
-          }`}
-        >
-          Clean only
-        </button>
-
-        {hasActiveFilters && (
+      {hasActiveFilters && (
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={() =>
@@ -81,7 +118,8 @@ export function FilterBar() {
                 category: 'All',
                 occasion: 'All',
                 season: 'All',
-                isCleanOnly: false,
+                cleanStatus: 'all',
+                sortBy: 'newest',
                 searchQuery: filters.searchQuery,
               })
             }
@@ -89,8 +127,8 @@ export function FilterBar() {
           >
             Clear filters
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

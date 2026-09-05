@@ -24,11 +24,20 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 1. Supabase → **SQL Editor** → New query.
 2. Paste and run **`supabase/schema.sql`** (items + outfits + capsules + storage).
 
-### 4. Auth settings (recommended for local learning)
+### 4. Auth settings (recommended)
 1. **Authentication → Providers → Email**
-2. Turn **Confirm email** OFF.
+2. For local learning you can turn **Confirm email** OFF (signup then enters the app immediately).
+3. **Authentication → URL Configuration**
+   - **Site URL:** `http://localhost:3000` (or your Vercel URL in production)
+   - **Redirect URLs:** add
+     - `http://localhost:3000/auth**`
+     - `https://your-app.vercel.app/auth**`
+   - Needed for **Forgot password** and email confirmation links.
 
-### 5. Use the app
+### 5. Optional: cost-per-wear column
+If your project already existed before wear counts, run **`supabase/schema-wear-count.sql`** once.
+
+### 6. Use the app
 1. Open http://localhost:3000/auth and create an account.
 2. Add items, save outfits, save extras cards — all sync to Supabase.
 3. If you still have browser-only data, use the banner **Import to cloud**.

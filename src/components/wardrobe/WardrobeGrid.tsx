@@ -16,7 +16,8 @@ export function WardrobeGrid() {
     filters.category !== 'All' ||
     filters.occasion !== 'All' ||
     filters.season !== 'All' ||
-    filters.isCleanOnly ||
+    filters.cleanStatus !== 'all' ||
+    filters.sortBy !== 'newest' ||
     filters.searchQuery.trim() !== '';
 
   if (filteredItems.length === 0) {

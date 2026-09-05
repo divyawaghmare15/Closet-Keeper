@@ -4,14 +4,16 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import type { Gender } from '@/types';
 
 export default function ProfilePage() {
-  const { user, gender, configured, signOut } = useAuth();
+  const { user, gender, configured, signOut, setGender } = useAuth();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [genderBusy, setGenderBusy] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
 
   if (!configured || !user) {
@@ -53,6 +55,25 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleGenderChange(next: Gender) {
+    if (next === gender) return;
+    setGenderBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await setGender(next);
+      setMessage(
+        next === 'male'
+          ? 'Profile set to Male. Categories and suggestions will use the men’s closet.'
+          : 'Profile set to Female. Categories and suggestions will use the women’s closet.',
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update profile type');
+    } finally {
+      setGenderBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-lg px-4 py-8 sm:px-6 sm:py-10">
       <h1 className="font-display text-2xl font-semibold tracking-tight">Profile</h1>
@@ -63,10 +84,24 @@ export default function ProfilePage() {
           Profile type
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Set when you signed in. Sign out and sign in again to use a different profile.
+          Controls which clothing categories you see when adding and tagging items.
         </p>
-        <div className="mt-4 inline-flex rounded-xl border border-accent/30 bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent">
-          {gender === 'male' ? 'Male' : gender === 'female' ? 'Female' : 'Not set'}
+        <div className="mt-4 flex gap-3">
+          {(['female', 'male'] as const).map((g) => (
+            <button
+              key={g}
+              type="button"
+              disabled={genderBusy}
+              onClick={() => void handleGenderChange(g)}
+              className={`flex-1 cursor-pointer rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:opacity-60 ${
+                gender === g
+                  ? 'border-accent bg-accent text-white'
+                  : 'border-border bg-surface text-foreground hover:border-accent/50'
+              }`}
+            >
+              {g === 'female' ? 'Female' : 'Male'}
+            </button>
+          ))}
         </div>
       </section>
 
@@ -123,7 +158,9 @@ export default function ProfilePage() {
         <button
           type="button"
           onClick={() => {
-            void signOut();
+            void signOut().then(() => {
+              window.location.assign('/auth');
+            });
           }}
           className="mt-4 w-full cursor-pointer rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-foreground ring-1 ring-border transition hover:bg-accent-soft"
         >

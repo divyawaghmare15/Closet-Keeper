@@ -48,6 +48,56 @@ export const CATEGORIES: Category[] = [
   ...new Set([...FEMALE_CATEGORIES, ...MALE_CATEGORIES]),
 ];
 
+/** Upper-body pieces that pair with bottoms (female + male). */
+export const TOP_CATEGORIES: Category[] = [
+  'Top',
+  'Kurti',
+  'Corset',
+  'Shirt',
+  'T-Shirt',
+  'Ethnic',
+];
+
+/** Lower-body pieces that pair with tops. */
+export const BOTTOM_CATEGORIES: Category[] = [
+  'Bottom',
+  'Jeans',
+  'Trousers',
+  'Shorts',
+];
+
+/** Standalone looks that do not need a separate bottom. */
+export const ONE_PIECE_CATEGORIES: Category[] = [
+  'One-Piece',
+  'Saree',
+  'Suit',
+  'Swimwear',
+];
+
+/** Optional outer layers over a core look. */
+export const LAYER_CATEGORIES: Category[] = [
+  'Layer',
+  'Jacket',
+  'Blazer',
+  'Hoodie',
+];
+
+export function isTopCategory(category: Category): boolean {
+  return TOP_CATEGORIES.includes(category);
+}
+
+export function isBottomCategory(category: Category): boolean {
+  return BOTTOM_CATEGORIES.includes(category);
+}
+
+export function isOnePieceCategory(category: Category): boolean {
+  return ONE_PIECE_CATEGORIES.includes(category);
+}
+
+export function isLayerCategory(category: Category): boolean {
+  return LAYER_CATEGORIES.includes(category);
+}
+
 export const OCCASIONS: Occasion[] = [
   'Casual',
   'Office',

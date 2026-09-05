@@ -55,11 +55,19 @@ export function ItemCard({
           <p className="mt-0.5 truncate text-sm text-muted">{meta}</p>
           {(item.brand || item.price != null) && (
             <p className="mt-0.5 truncate text-xs text-muted">
-              {[item.brand || null, item.price != null ? `₹${item.price}` : null]
+              {[
+                item.brand || null,
+                item.price != null ? `₹${item.price}` : null,
+                formatCostPerWear(item),
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
           )}
+          <p className="mt-0.5 truncate text-xs text-muted">
+            {formatLastWorn(item.lastWornDate)}
+            {item.wearCount > 0 ? ` · ${item.wearCount} wear${item.wearCount === 1 ? '' : 's'}` : ''}
+          </p>
         </div>
         {item.occasions.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
@@ -84,9 +92,14 @@ export function ItemCard({
           <button
             type="button"
             onClick={onToggleClean}
+            title={
+              item.isClean
+                ? 'Move to laundry (mark as in wash)'
+                : 'Mark as clean and ready to wear'
+            }
             className="cursor-pointer rounded-xl bg-surface px-3 py-2.5 text-sm font-semibold text-foreground ring-1 ring-border transition hover:bg-accent-soft"
           >
-            {item.isClean ? 'Wash' : 'Clean'}
+            {item.isClean ? 'To laundry' : 'Mark clean'}
           </button>
           <button
             type="button"
@@ -151,4 +164,25 @@ export function ItemCard({
         )}
     </article>
   );
+}
+
+function formatLastWorn(lastWornDate: string | null): string {
+  if (!lastWornDate) return 'Never worn';
+  const worn = new Date(lastWornDate);
+  if (Number.isNaN(worn.getTime())) return 'Never worn';
+  const days = Math.floor(
+    (Date.now() - worn.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (days <= 0) return 'Worn today';
+  if (days === 1) return 'Worn yesterday';
+  if (days < 30) return `Worn ${days} days ago`;
+  return `Last worn ${worn.toLocaleDateString()}`;
+}
+
+function formatCostPerWear(item: ClothingItem): string | null {
+  if (item.price == null || item.price <= 0) return null;
+  const wears = Math.max(item.wearCount ?? 0, item.lastWornDate ? 1 : 0);
+  if (wears <= 0) return 'CPW pending';
+  const cpw = item.price / wears;
+  return `₹${cpw < 10 ? cpw.toFixed(1) : Math.round(cpw)}/wear`;
 }

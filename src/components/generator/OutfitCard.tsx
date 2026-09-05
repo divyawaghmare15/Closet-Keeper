@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Badge } from '@/components/common/Badge';
 import type { Outfit } from '@/types';
 
@@ -20,6 +22,9 @@ export function OutfitCard({
   onToggleFavorite?: () => void;
   onWear?: () => void;
 }) {
+  const [wearConfirmOpen, setWearConfirmOpen] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+
   return (
     <article
       className="animate-fade-up overflow-hidden rounded-[1.75rem] border border-border/60 bg-surface-elevated shadow-sm"
@@ -112,16 +117,23 @@ export function OutfitCard({
           {onWear && (
             <button
               type="button"
-              onClick={onWear}
+              onClick={() => setWearConfirmOpen(true)}
               className="rounded-xl bg-surface px-3.5 py-2 text-sm font-semibold ring-1 ring-border"
             >
-              Mark worn
+              I wore this
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => void shareOutfit(outfit)}
+            className="rounded-xl bg-surface px-3.5 py-2 text-sm font-semibold ring-1 ring-border"
+          >
+            Share
+          </button>
           {saved && onRemove && (
             <button
               type="button"
-              onClick={onRemove}
+              onClick={() => setRemoveConfirmOpen(true)}
               className="rounded-xl px-3.5 py-2 text-sm font-semibold text-muted hover:bg-red-50 hover:text-red-700"
             >
               Remove
@@ -129,6 +141,120 @@ export function OutfitCard({
           )}
         </div>
       </div>
+
+      {wearConfirmOpen &&
+        onWear &&
+        createPortal(
+          <ConfirmDialog
+            title="Mark this look as worn?"
+            body={`This will move ${outfit.items.length} piece${outfit.items.length === 1 ? '' : 's'} to laundry (In wash) and update last worn.`}
+            confirmLabel="Yes, I wore it"
+            onCancel={() => setWearConfirmOpen(false)}
+            onConfirm={() => {
+              setWearConfirmOpen(false);
+              onWear();
+            }}
+          />,
+          document.body,
+        )}
+
+      {removeConfirmOpen &&
+        onRemove &&
+        createPortal(
+          <ConfirmDialog
+            title="Remove this outfit?"
+            body="The saved look will be deleted. Your clothing items stay in the wardrobe."
+            confirmLabel="Remove"
+            danger
+            onCancel={() => setRemoveConfirmOpen(false)}
+            onConfirm={() => {
+              setRemoveConfirmOpen(false);
+              onRemove();
+            }}
+          />,
+          document.body,
+        )}
     </article>
   );
+}
+
+function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  danger = false,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  danger?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
+      role="presentation"
+      onClick={onCancel}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-sm rounded-2xl border border-border/60 bg-surface-elevated p-6 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3 className="font-display text-lg font-semibold text-foreground">
+          {title}
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 rounded-xl bg-surface px-4 py-2.5 text-sm font-semibold text-foreground ring-1 ring-border transition hover:bg-accent-soft/50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition ${
+              danger
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-accent hover:brightness-110'
+            }`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function shareOutfit(outfit: Outfit) {
+  const lines = [
+    `ClosetKeeper look: ${outfit.title}`,
+    `Occasion: ${outfit.occasion}`,
+    ...outfit.items.map((item) => `• ${item.title} (${item.category})`),
+  ];
+  if (outfit.reason) lines.push(outfit.reason);
+  const text = lines.join('\n');
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: outfit.title, text });
+      return;
+    }
+  } catch {
+    // fall through to clipboard
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // ignore
+  }
 }

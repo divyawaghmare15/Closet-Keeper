@@ -210,6 +210,7 @@ export function BulkImport({
         occasions: draft.occasions.length ? draft.occasions : ['Casual'],
         isClean: true,
         lastWornDate: null,
+        wearCount: 0,
         createdAt: new Date().toISOString(),
         brand: draft.brand.trim(),
         size: '',

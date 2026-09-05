@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { FilterBar } from '@/components/wardrobe/FilterBar';
 import { SearchInput } from '@/components/wardrobe/SearchInput';
 import { WardrobeGrid } from '@/components/wardrobe/WardrobeGrid';
@@ -36,19 +37,37 @@ function SkeletonGrid() {
 }
 
 export default function WardrobePage() {
-  const { filteredItems, items, loading, error, cloudEnabled } = useWardrobe();
+  const {
+    filteredItems,
+    items,
+    loading,
+    error,
+    cloudEnabled,
+    filters,
+    setFilters,
+  } = useWardrobe();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('laundry') === '1') {
+      setFilters((prev) => ({ ...prev, cleanStatus: 'laundry' }));
+    }
+  }, [setFilters]);
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <div className="animate-fade-up mb-8">
         <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-          Your wardrobe
+          {filters.cleanStatus === 'laundry' ? 'Laundry' : 'Your wardrobe'}
         </h1>
         <p className="mt-2 text-sm text-muted sm:text-base">
           {loading
             ? 'Loading…'
             : `${filteredItems.length} shown${
-                filteredItems.length !== items.length ? ` of ${items.length}` : ''
+                filteredItems.length !== items.length
+                  ? ` of ${items.length}`
+                  : ''
               }`}
           {cloudEnabled ? ' · cloud sync' : ' · local only'}
         </p>
