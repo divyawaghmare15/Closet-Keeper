@@ -120,6 +120,7 @@ export const COLORS: Color[] = [
   'Blue',
   'Red',
   'Green',
+  'Olive',
   'Beige',
   'Brown',
   'Pink',
@@ -128,12 +129,20 @@ export const COLORS: Color[] = [
   'Orange',
   'Maroon',
   'Cream',
-  'Olive',
   'Teal',
   'Gold',
   'Silver',
   'Multicolor',
 ];
+
+/** Friendlier labels for preset swatches / selects. */
+export const COLOR_LABELS: Partial<Record<string, string>> = {
+  Olive: 'Olive Green',
+};
+
+export function colorLabel(color: string): string {
+  return COLOR_LABELS[color] ?? color;
+}
 
 export const SEASONS: Season[] = [
   'All-Season',

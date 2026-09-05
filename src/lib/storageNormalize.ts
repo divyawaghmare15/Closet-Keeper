@@ -21,7 +21,25 @@ export function isOccasion(value: unknown): value is Occasion {
 }
 
 export function isColor(value: unknown): value is Color {
-  return typeof value === 'string' && (COLORS as readonly string[]).includes(value);
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 32) return false;
+  if ((COLORS as readonly string[]).includes(trimmed)) return true;
+  // Custom colors: letters, numbers, spaces, hyphens.
+  return /^[A-Za-z0-9][A-Za-z0-9 \-]{0,31}$/.test(trimmed);
+}
+
+/** Normalize a color string for storage (title-case custom names). */
+export function normalizeColorName(value: string): Color | null {
+  const trimmed = value.trim().replace(/\s+/g, ' ');
+  if (!isColor(trimmed)) return null;
+  const lower = trimmed.toLowerCase();
+  if (lower === 'olive green' || lower === 'olivegreen') return 'Olive';
+  const preset = (COLORS as readonly string[]).find(
+    (c) => c.toLowerCase() === lower,
+  );
+  if (preset) return preset as Color;
+  return trimmed.replace(/\b\w/g, (ch) => ch.toUpperCase()) as Color;
 }
 
 export function isSeason(value: unknown): value is Season {

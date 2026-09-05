@@ -4,12 +4,12 @@ import { useId, useMemo, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { BulkImport } from '@/components/add-item/BulkImport';
 import { ImageUploader } from '@/components/add-item/ImageUploader';
+import { ColorPicker } from '@/components/common/ColorPicker';
 import { useWardrobe } from '@/context/WardrobeContext';
 import { autoTagFromImage } from '@/lib/autoTag';
 import { useAuth } from '@/context/AuthContext';
 import {
   categoriesForGender,
-  COLORS,
   OCCASIONS,
   SEASONS,
   SIZES,
@@ -23,30 +23,6 @@ const PRIMARY_OCCASIONS: Occasion[] = [
   'Date Night',
   'Sports',
 ];
-
-const COLOR_SWATCH_CLASSES: Partial<Record<Color, string>> = {
-  Black: 'bg-black',
-  White: 'bg-white border border-slate-300',
-  Grey: 'bg-gray-500',
-  Navy: 'bg-blue-900',
-  Blue: 'bg-blue-500',
-  Red: 'bg-red-600',
-  Green: 'bg-green-600',
-  Beige: 'bg-amber-100',
-  Brown: 'bg-amber-800',
-  Pink: 'bg-pink-400',
-  Purple: 'bg-purple-600',
-  Yellow: 'bg-yellow-400',
-  Orange: 'bg-orange-500',
-  Maroon: 'bg-red-900',
-  Cream: 'bg-amber-50 border border-slate-200',
-  Olive: 'bg-lime-700',
-  Teal: 'bg-teal-600',
-  Gold: 'bg-yellow-600',
-  Silver: 'bg-gray-300',
-  Multicolor:
-    'bg-gradient-to-br from-pink-400 via-yellow-300 to-blue-500',
-};
 
 export function TaggingForm() {
   const router = useRouter();
@@ -315,28 +291,7 @@ export function TaggingForm() {
               <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 Color
               </span>
-              <div className="flex flex-wrap gap-2 p-0.5">
-                {COLORS.map((value) => {
-                  const active = color === value;
-                  const swatchClass =
-                    COLOR_SWATCH_CLASSES[value] ?? 'bg-gray-400';
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      title={value}
-                      aria-label={value}
-                      aria-pressed={active}
-                      onClick={() => setColor(value)}
-                      className={`size-7 rounded-full transition ${swatchClass} ${
-                        active
-                          ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface-elevated'
-                          : 'hover:scale-110'
-                      }`}
-                    />
-                  );
-                })}
-              </div>
+              <ColorPicker value={color} onChange={setColor} />
             </div>
 
             <div className="space-y-1.5">

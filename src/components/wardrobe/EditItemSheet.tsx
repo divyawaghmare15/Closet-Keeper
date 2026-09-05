@@ -10,11 +10,11 @@ import {
 } from '@/lib/imageProcess';
 import {
   categoriesForGender,
-  COLORS,
   OCCASIONS,
   SEASONS,
   SIZES,
 } from '@/lib/constants';
+import { ColorPicker } from '@/components/common/ColorPicker';
 import type {
   Category,
   ClothingItem,
@@ -204,20 +204,14 @@ export function EditItemSheet({
                   )}
                 </select>
               </label>
-              <label className="block space-y-1.5">
+              <div className="block space-y-1.5">
                 <span className="text-sm font-semibold">Color</span>
-                <select
+                <ColorPicker
                   value={color}
-                  onChange={(e) => setColor(e.target.value as Color)}
-                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-accent"
-                >
-                  {COLORS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  onChange={setColor}
+                  variant="select"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

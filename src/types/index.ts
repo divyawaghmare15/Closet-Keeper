@@ -56,7 +56,9 @@ export type Color =
   | 'Teal'
   | 'Gold'
   | 'Silver'
-  | 'Multicolor';
+  | 'Multicolor'
+  /** Free-form color name entered by the user (e.g. "Sage", "Wine"). */
+  | (string & {});
 
 export type Season = 'Spring' | 'Summer' | 'Fall' | 'Winter' | 'All-Season' | 'Monsoon';
 

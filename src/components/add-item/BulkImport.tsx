@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useWardrobe } from '@/context/WardrobeContext';
 import { autoTagFromImage } from '@/lib/autoTag';
-import { categoriesForGender, COLORS, OCCASIONS, SEASONS } from '@/lib/constants';
+import { categoriesForGender, colorLabel, COLORS, OCCASIONS, SEASONS } from '@/lib/constants';
 import { compressDataUrl, fileToDataUrl } from '@/lib/imageProcess';
 import type {
   Category,
@@ -380,9 +380,12 @@ export function BulkImport({
                     >
                       {COLORS.map((value) => (
                         <option key={value} value={value}>
-                          {value}
+                          {colorLabel(value)}
                         </option>
                       ))}
+                      {!(COLORS as readonly string[]).includes(draft.color) && (
+                        <option value={draft.color}>{draft.color}</option>
+                      )}
                     </select>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
