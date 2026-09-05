@@ -80,6 +80,7 @@ export function TaggingForm() {
   const [price, setPrice] = useState('');
   const [notes, setNotes] = useState('');
   const [autoTagging, setAutoTagging] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const autoTitlePlaceholder = useMemo(
@@ -130,6 +131,7 @@ export function TaggingForm() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (saving || autoTagging) return;
 
     const resolvedTitle = title.trim() || autoTitlePlaceholder;
 
@@ -148,8 +150,9 @@ export function TaggingForm() {
       return;
     }
 
+    setSaving(true);
+    setError('');
     try {
-      setError('');
       await saveItem({
         id: crypto.randomUUID(),
         title: resolvedTitle,
@@ -170,6 +173,7 @@ export function TaggingForm() {
       router.push('/wardrobe');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save item');
+      setSaving(false);
     }
   }
 
@@ -193,15 +197,21 @@ export function TaggingForm() {
 
   return (
     <form onSubmit={handleSubmit} className="relative">
-      {autoTagging && (
+      {(autoTagging || saving) && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 backdrop-blur-[2px]">
           <div className="flex flex-col items-center gap-4 rounded-[1.5rem] bg-surface-elevated px-8 py-7 shadow-xl">
             <span
               className="size-10 animate-spin rounded-full border-[3px] border-accent-soft border-t-accent"
               aria-hidden
             />
-            <p className="font-display text-lg font-semibold">Auto-tagging</p>
-            <p className="text-sm text-muted">Reading the photo for tags…</p>
+            <p className="font-display text-lg font-semibold">
+              {saving ? 'Saving item' : 'Auto-tagging'}
+            </p>
+            <p className="text-sm text-muted">
+              {saving
+                ? 'Adding this piece to your wardrobe…'
+                : 'Reading the photo for tags…'}
+            </p>
           </div>
         </div>
       )}
@@ -452,9 +462,17 @@ export function TaggingForm() {
 
             <button
               type="submit"
-              className="w-full rounded-2xl bg-accent py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 active:scale-[0.99]"
+              disabled={saving || autoTagging || !imageUrl}
+              aria-busy={saving}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Save to wardrobe
+              {saving && (
+                <span
+                  className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                  aria-hidden
+                />
+              )}
+              {saving ? 'Saving…' : 'Save to wardrobe'}
             </button>
           </div>
         </div>
