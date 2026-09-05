@@ -8,6 +8,7 @@ import {
   cropDataUrl,
   fileToDataUrl,
   flattenOnWhite,
+  hardenCutoutAlpha,
   removeBackgroundSmart,
 } from '@/lib/imageProcess';
 
@@ -32,6 +33,9 @@ export function ImageUploader({
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [pendingRaw, setPendingRaw] = useState('');
   const [originalRaw, setOriginalRaw] = useState('');
+  /** Cropped/original photo before background removal (for Undo BG). */
+  const [preBgUrl, setPreBgUrl] = useState('');
+  const [bgApplied, setBgApplied] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
@@ -39,6 +43,8 @@ export function ImageUploader({
   async function beginWithFile(file: File) {
     if (!file.type.startsWith('image/')) return;
     setError('');
+    setPreBgUrl('');
+    setBgApplied(false);
     const dataUrl = await fileToDataUrl(file);
     setOriginalRaw(dataUrl);
     setPendingRaw(dataUrl);
@@ -75,6 +81,8 @@ export function ImageUploader({
     setError('');
     setPendingRaw('');
     setOriginalRaw('');
+    setPreBgUrl('');
+    setBgApplied(false);
     onChange('');
   }
 
@@ -89,15 +97,23 @@ export function ImageUploader({
   ) {
     const shouldRemove = options?.removeBackground ?? autoRemoveBackground;
     try {
-      let processed = source;
-      if (shouldRemove) {
-        setBusy('Removing background…');
-        processed = await removeBackgroundSmart(source);
-        processed = await flattenOnWhite(processed);
-      } else {
+      const originalCompressed = await compressDataUrl(source);
+      setPreBgUrl(originalCompressed);
+
+      if (!shouldRemove) {
         setBusy('Saving photo…');
+        setBgApplied(false);
+        onChange(originalCompressed);
+        onProcessed?.(originalCompressed);
+        return;
       }
+
+      setBusy('Removing background…');
+      let processed = await removeBackgroundSmart(source);
+      processed = await hardenCutoutAlpha(processed);
+      processed = await flattenOnWhite(processed);
       const compressed = await compressDataUrl(processed);
+      setBgApplied(true);
       onChange(compressed);
       onProcessed?.(compressed);
     } catch (err) {
@@ -136,8 +152,19 @@ export function ImageUploader({
   }
 
   async function removeBackgroundNow() {
-    if (!imageUrl || busy) return;
-    await finishProcessed(imageUrl, { removeBackground: true });
+    if (busy) return;
+    const source = preBgUrl || imageUrl;
+    if (!source) return;
+    await finishProcessed(source, { removeBackground: true });
+  }
+
+  function undoBackground() {
+    if (!preBgUrl || busy) return;
+    setError('');
+    setBgApplied(false);
+    onAutoRemoveBackgroundChange(false);
+    onChange(preBgUrl);
+    onProcessed?.(preBgUrl);
   }
 
   function openGallery() {
@@ -178,7 +205,7 @@ export function ImageUploader({
               alt="Selected clothing preview"
               className="absolute inset-0 h-full w-full object-contain p-4"
             />
-            <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-2">
+            <div className="absolute right-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap justify-end gap-2">
               {originalRaw && (
                 <button
                   type="button"
@@ -192,17 +219,31 @@ export function ImageUploader({
                   Re-crop
                 </button>
               )}
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void removeBackgroundNow();
-                }}
-                disabled={Boolean(busy)}
-                className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-accent shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60"
-              >
-                Remove BG
-              </button>
+              {bgApplied && preBgUrl ? (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    undoBackground();
+                  }}
+                  disabled={Boolean(busy)}
+                  className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60"
+                >
+                  Undo BG
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void removeBackgroundNow();
+                  }}
+                  disabled={Boolean(busy)}
+                  className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-accent shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60"
+                >
+                  Remove BG
+                </button>
+              )}
               <button
                 type="button"
                 onClick={(event) => {
@@ -264,8 +305,8 @@ export function ImageUploader({
             </p>
             <p className="mt-0.5 text-xs text-muted">
               {autoRemoveBackground
-                ? 'Background will be removed after you crop.'
-                : 'Default: crop and keep your photo as-is. Turn on only if you want a cutout.'}
+                ? 'Background will be removed after you crop. You can Undo BG afterward.'
+                : 'Default: crop and keep colors as-is. Turn on only if you want a cutout.'}
             </p>
           </div>
           <span
@@ -281,6 +322,16 @@ export function ImageUploader({
             />
           </span>
         </button>
+        {bgApplied && (
+          <button
+            type="button"
+            onClick={undoBackground}
+            disabled={Boolean(busy) || !preBgUrl}
+            className="w-full rounded-2xl border border-border/70 bg-surface px-3.5 py-2.5 text-left text-sm font-semibold text-foreground transition hover:bg-accent-soft/50 disabled:opacity-60"
+          >
+            Restore original photo (undo background removal)
+          </button>
+        )}
       </div>
 
       {error && (

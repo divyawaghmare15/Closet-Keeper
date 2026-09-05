@@ -38,6 +38,50 @@ export async function flattenOnWhite(dataUrl: string): Promise<string> {
   return canvas.toDataURL('image/png');
 }
 
+/**
+ * Keep garment colors true after cutout: un-premultiply soft edges, then
+ * harden alpha so flattening on white does not wash blacks into greys.
+ */
+export async function hardenCutoutAlpha(
+  dataUrl: string,
+  threshold = 140,
+): Promise<string> {
+  const image = await loadImage(dataUrl);
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return dataUrl;
+
+  ctx.drawImage(image, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const { data } = imageData;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3];
+    if (a <= 0) {
+      data[i] = 0;
+      data[i + 1] = 0;
+      data[i + 2] = 0;
+      data[i + 3] = 0;
+      continue;
+    }
+
+    // Undo premultiplication so dark fabric isn't washed toward white/black.
+    if (a < 255) {
+      const inv = 255 / a;
+      data[i] = Math.min(255, Math.round(data[i] * inv));
+      data[i + 1] = Math.min(255, Math.round(data[i + 1] * inv));
+      data[i + 2] = Math.min(255, Math.round(data[i + 2] * inv));
+    }
+
+    data[i + 3] = a >= threshold ? 255 : 0;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return canvas.toDataURL('image/png');
+}
+
 export async function compressDataUrl(
   dataUrl: string,
   maxBytes = MAX_BYTES,
