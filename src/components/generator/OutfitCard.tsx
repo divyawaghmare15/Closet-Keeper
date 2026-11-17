@@ -70,13 +70,13 @@ export function OutfitCard({
         ))}
       </div>
 
-      <div className="space-y-3 px-5 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="space-y-3 px-3.5 py-3.5 sm:px-5 sm:py-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate font-display text-lg font-semibold tracking-tight">
+            <h3 className="truncate font-display text-base font-semibold tracking-tight sm:text-lg">
               {outfit.title}
             </h3>
-            <p className="text-sm text-muted">
+            <p className="text-xs text-muted sm:text-sm">
               {outfit.items.length} piece
               {outfit.items.length === 1 ? '' : 's'}
               {typeof outfit.matchScore === 'number' && !outfit.reason
@@ -84,61 +84,63 @@ export function OutfitCard({
                 : ''}
             </p>
             {outfit.reason && (
-              <p className="mt-1 text-sm leading-relaxed text-muted">
+              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted sm:text-sm">
                 {outfit.reason}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
             {outfit.isFavorite && <Badge variant="category">Favorite</Badge>}
             <Badge variant="neutral">{outfit.occasion}</Badge>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           {!saved && onSave && (
             <button
               type="button"
               onClick={onSave}
-              className="rounded-xl bg-accent px-3.5 py-2 text-sm font-semibold text-white"
+              className="w-full rounded-xl bg-accent px-3.5 py-2.5 text-sm font-semibold text-white sm:w-auto"
             >
-              Save outfit
-            </button>
-          )}
-          {saved && onToggleFavorite && (
-            <button
-              type="button"
-              onClick={onToggleFavorite}
-              className="rounded-xl bg-surface px-3.5 py-2 text-sm font-semibold ring-1 ring-border"
-            >
-              {outfit.isFavorite ? 'Unfavorite' : 'Favorite'}
+              Save look
             </button>
           )}
           {onWear && (
             <button
               type="button"
               onClick={() => setWearConfirmOpen(true)}
-              className="rounded-xl bg-surface px-3.5 py-2 text-sm font-semibold ring-1 ring-border"
+              className="w-full rounded-xl bg-accent px-3.5 py-2.5 text-sm font-semibold text-white sm:w-auto sm:bg-surface sm:text-foreground sm:ring-1 sm:ring-border"
             >
               I wore this
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => void shareOutfit(outfit)}
-            className="rounded-xl bg-surface px-3.5 py-2 text-sm font-semibold ring-1 ring-border"
-          >
-            Share
-          </button>
-          {saved && onRemove && (
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            {saved && onToggleFavorite && (
+              <button
+                type="button"
+                onClick={onToggleFavorite}
+                className="rounded-xl bg-surface px-3.5 py-2.5 text-sm font-semibold ring-1 ring-border"
+              >
+                {outfit.isFavorite ? 'Unfavorite' : 'Favorite'}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setRemoveConfirmOpen(true)}
-              className="rounded-xl px-3.5 py-2 text-sm font-semibold text-muted hover:bg-red-50 hover:text-red-700"
+              onClick={() => void shareOutfit(outfit)}
+              className="rounded-xl bg-surface px-3.5 py-2.5 text-sm font-semibold ring-1 ring-border"
             >
-              Remove
+              Share
             </button>
-          )}
+            {saved && onRemove && (
+              <button
+                type="button"
+                onClick={() => setRemoveConfirmOpen(true)}
+                className="col-span-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-muted ring-1 ring-border/60 hover:bg-red-50 hover:text-red-700 sm:col-span-1 sm:ring-0"
+              >
+                Remove
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

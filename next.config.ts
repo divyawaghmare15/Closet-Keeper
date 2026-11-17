@@ -1,7 +1,7 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@imgly/background-removal"],
+  serverExternalPackages: ['@huggingface/transformers', 'onnxruntime-node'],
 };
 
 export default nextConfig;

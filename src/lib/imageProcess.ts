@@ -23,6 +23,21 @@ export async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+/** Convert a remote or blob image URL into a data URL for ML / canvas processing. */
+export async function toProcessableDataUrl(src: string): Promise<string> {
+  if (!src) throw new Error('Missing image');
+  if (src.startsWith('data:')) return src;
+
+  const response = await fetch(src, { mode: 'cors' });
+  if (!response.ok) {
+    throw new Error('Could not load image for background removal');
+  }
+  const blob = await response.blob();
+  return fileToDataUrl(
+    new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' }),
+  );
+}
+
 /** Paint transparent pixels white so JPEG export never turns them black. */
 export async function flattenOnWhite(dataUrl: string): Promise<string> {
   const image = await loadImage(dataUrl);
@@ -40,11 +55,12 @@ export async function flattenOnWhite(dataUrl: string): Promise<string> {
 
 /**
  * Keep garment colors true after cutout: un-premultiply soft edges, then
- * harden alpha so flattening on white does not wash blacks into greys.
+ * gently clean alpha (avoid hard binarize — that causes salt-and-pepper noise).
  */
 export async function hardenCutoutAlpha(
   dataUrl: string,
-  threshold = 140,
+  softFloor = 18,
+  softCeil = 236,
 ): Promise<string> {
   const image = await loadImage(dataUrl);
   const canvas = document.createElement('canvas');
@@ -58,7 +74,7 @@ export async function hardenCutoutAlpha(
   const { data } = imageData;
 
   for (let i = 0; i < data.length; i += 4) {
-    const a = data[i + 3];
+    let a = data[i + 3];
     if (a <= 0) {
       data[i] = 0;
       data[i + 1] = 0;
@@ -67,7 +83,6 @@ export async function hardenCutoutAlpha(
       continue;
     }
 
-    // Undo premultiplication so dark fabric isn't washed toward white/black.
     if (a < 255) {
       const inv = 255 / a;
       data[i] = Math.min(255, Math.round(data[i] * inv));
@@ -75,7 +90,9 @@ export async function hardenCutoutAlpha(
       data[i + 2] = Math.min(255, Math.round(data[i + 2] * inv));
     }
 
-    data[i + 3] = a >= threshold ? 255 : 0;
+    if (a < softFloor) a = 0;
+    else if (a > softCeil) a = 255;
+    data[i + 3] = a;
   }
 
   ctx.putImageData(imageData, 0, 0);
@@ -194,24 +211,47 @@ export async function removeBackgroundCanvas(dataUrl: string): Promise<string> {
   return canvas.toDataURL('image/png');
 }
 
-export async function removeBackgroundMl(dataUrl: string): Promise<string> {
-  const { removeBackground } = await import('@imgly/background-removal');
-  const blob = await removeBackground(dataUrl, {
-    output: { format: 'image/png', quality: 0.9 },
-  });
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') resolve(reader.result);
-      else reject(new Error('Background removal failed'));
-    };
-    reader.onerror = () => reject(new Error('Background removal failed'));
-    reader.readAsDataURL(blob as Blob);
+export type RemoveBackgroundProgress = {
+  phase: string;
+  progress: number;
+  message: string;
+};
+
+/**
+ * Client-side ML via Transformers.js + BRIA RMBG-1.4 in a Web Worker.
+ */
+export async function removeBackgroundMl(
+  dataUrl: string,
+  onProgress?: (update: RemoveBackgroundProgress) => void,
+): Promise<string> {
+  const { removeBackgroundWithRmbg } = await import('@/lib/rmbg/rmbgClient');
+  return removeBackgroundWithRmbg(dataUrl, {
+    onProgress: onProgress
+      ? (update) =>
+          onProgress({
+            phase: update.phase,
+            progress: update.progress,
+            message: update.message,
+          })
+      : undefined,
   });
 }
 
-export async function removeBackgroundSmart(dataUrl: string): Promise<string> {
+/**
+ * 1) Optional remove.bg API (REMOVE_BG_API_KEY)
+ * 2) Transformers.js RMBG-1.4 Web Worker
+ * 3) Canvas color-similarity heuristic
+ */
+export async function removeBackgroundSmart(
+  dataUrl: string,
+  onProgress?: (update: RemoveBackgroundProgress) => void,
+): Promise<string> {
   try {
+    onProgress?.({
+      phase: 'loading-model',
+      progress: 5,
+      message: 'Trying cloud background removal…',
+    });
     const response = await fetch('/api/remove-bg', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -220,16 +260,34 @@ export async function removeBackgroundSmart(dataUrl: string): Promise<string> {
 
     if (response.ok) {
       const payload = (await response.json()) as { image?: string };
-      if (payload.image) return payload.image;
+      if (payload.image) {
+        onProgress?.({
+          phase: 'complete',
+          progress: 100,
+          message: 'Background removed',
+        });
+        return payload.image;
+      }
     }
   } catch {
     // fall through
   }
 
   try {
-    return await removeBackgroundMl(dataUrl);
+    return await removeBackgroundMl(dataUrl, onProgress);
   } catch {
-    return removeBackgroundCanvas(dataUrl);
+    onProgress?.({
+      phase: 'processing',
+      progress: 50,
+      message: 'Using simple canvas fallback…',
+    });
+    const fallback = await removeBackgroundCanvas(dataUrl);
+    onProgress?.({
+      phase: 'complete',
+      progress: 100,
+      message: 'Background removed (fallback)',
+    });
+    return fallback;
   }
 }
 
@@ -275,16 +333,51 @@ export async function softenBackground(dataUrl: string): Promise<string> {
   return canvas.toDataURL('image/jpeg', 0.92);
 }
 
+function isLikelySkin(r: number, g: number, b: number): boolean {
+  return (
+    r > 90 &&
+    g > 35 &&
+    b > 15 &&
+    r > g &&
+    r > b &&
+    r - g > 12 &&
+    g > b - 10 &&
+    r < 250 &&
+    g < 220
+  );
+}
+
+function isLikelyFoliage(r: number, g: number, b: number): boolean {
+  return g > r + 12 && g > b + 12 && g > 60;
+}
+
+function isAccentMetalOrZari(r: number, g: number, b: number): boolean {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const sat = max === 0 ? 0 : (max - min) / max;
+  const value = max / 255;
+  if (value < 0.45 || sat < 0.15) return false;
+  const d = max - min || 1;
+  let h = 0;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  const hue = (h * 60 + 360) % 360;
+  return hue >= 25 && hue <= 70 && value > 0.5;
+}
+
 function rgbToColor(r: number, g: number, b: number): Color {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const sat = max === 0 ? 0 : (max - min) / max;
-  const brightness = max / 255;
+  const value = max / 255;
 
-  if (sat < 0.18) {
-    if (brightness > 0.85) return 'White';
-    if (brightness < 0.25) return 'Black';
-    return 'Beige';
+  if (sat < 0.14) {
+    if (value > 0.88) return 'White';
+    if (value > 0.72) return 'Cream';
+    if (value < 0.22) return 'Black';
+    if (value < 0.48) return 'Grey';
+    return 'Silver';
   }
 
   const hue = (() => {
@@ -296,19 +389,44 @@ function rgbToColor(r: number, g: number, b: number): Color {
     return (h * 60 + 360) % 360;
   })();
 
-  if (hue < 25 || hue >= 345) return 'Red';
-  if (hue < 75) return sat > 0.35 && brightness > 0.45 ? 'Beige' : 'Beige';
-  if (hue < 160) return 'Green';
-  if (hue < 260) return 'Blue';
-  if (hue < 320) return 'Red';
-  return 'Multicolor';
+  if (hue < 18 || hue >= 345) {
+    if (value < 0.45) return 'Maroon';
+    if (sat < 0.35 && value > 0.55) return 'Pink';
+    return 'Red';
+  }
+  if (hue < 40) {
+    if (value < 0.4) return 'Brown';
+    return sat > 0.55 ? 'Orange' : 'Brown';
+  }
+  if (hue < 65) {
+    if (sat < 0.35) return 'Beige';
+    if (value > 0.55 && sat > 0.45) return 'Gold';
+    return 'Yellow';
+  }
+  if (hue < 95) {
+    if (sat < 0.4 || value < 0.45) return 'Olive';
+    return 'Green';
+  }
+  if (hue < 160) {
+    if (hue > 140 && sat > 0.35) return 'Teal';
+    return 'Green';
+  }
+  if (hue < 200) return 'Teal';
+  if (hue < 255) {
+    if (value < 0.4) return 'Navy';
+    return 'Blue';
+  }
+  if (hue < 290) return 'Purple';
+  if (hue < 330) return 'Pink';
+  if (value < 0.45) return 'Maroon';
+  return 'Red';
 }
 
 /** Local heuristic auto-tag from dominant garment colors. */
 export async function detectDominantColor(dataUrl: string): Promise<Color> {
   const image = await loadImage(dataUrl);
   const canvas = document.createElement('canvas');
-  const size = 48;
+  const size = 72;
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
@@ -317,33 +435,10 @@ export async function detectDominantColor(dataUrl: string): Promise<Color> {
   ctx.drawImage(image, 0, 0, size, size);
   const { data } = ctx.getImageData(0, 0, size, size);
 
-  // Majority vote across pixels (more robust than averaging).
-  const counts: Record<Color, number> = {
-    Black: 0,
-    White: 0,
-    Beige: 0,
-    Red: 0,
-    Green: 0,
-    Blue: 0,
-    // The remaining colors exist in the app type, but this local heuristic
-    // intentionally maps only to a small palette it can classify reliably.
-    Brown: 0,
-    Grey: 0,
-    Navy: 0,
-    Pink: 0,
-    Purple: 0,
-    Yellow: 0,
-    Orange: 0,
-    Maroon: 0,
-    Cream: 0,
-    Olive: 0,
-    Teal: 0,
-    Gold: 0,
-    Silver: 0,
-    Multicolor: 0,
-  } as any;
-
+  const counts: Partial<Record<Color, number>> = {};
   let used = 0;
+  let blackish = 0;
+
   for (let idx = 0; idx < data.length; idx += 4) {
     const alpha = data[idx + 3];
     if (alpha < 128) continue;
@@ -352,55 +447,40 @@ export async function detectDominantColor(dataUrl: string): Promise<Color> {
     const x = pixelIndex % size;
     const y = Math.floor(pixelIndex / size);
 
-    // Sample the center area (ignores edges where backgrounds dominate).
-    if (x < size * 0.1 || x > size * 0.9 || y < size * 0.1 || y > size * 0.9) {
+    // Mid garment band — skip face-heavy top & ground-heavy bottom.
+    if (x < size * 0.15 || x > size * 0.85 || y < size * 0.22 || y > size * 0.78) {
       continue;
     }
 
     const r = data[idx];
     const g = data[idx + 1];
     const b = data[idx + 2];
-
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const sat = max === 0 ? 0 : (max - min) / max;
     const brightness = (r + g + b) / 3;
 
-    // Skip near-white / near-black pixels (often background).
-    if (brightness > 245 || brightness < 12) continue;
+    if (brightness > 248 || brightness < 8) continue;
+    if (isLikelySkin(r, g, b)) continue;
+    if (isLikelyFoliage(r, g, b)) continue;
+    if (isAccentMetalOrZari(r, g, b)) continue;
 
-    let color: Color = 'Multicolor';
-
-    if (sat < 0.18) {
-      if (brightness > 0.85 * 255) color = 'White';
-      else if (brightness < 0.25 * 255) color = 'Black';
-      else color = 'Beige';
-    } else {
-      const d = max - min || 1;
-      let h = 0;
-      if (max === r) h = ((g - b) / d) % 6;
-      else if (max === g) h = (b - r) / d + 2;
-      else h = (r - g) / d + 4;
-      const hue = (h * 60 + 360) % 360;
-
-      if (hue < 25 || hue >= 345) color = 'Red';
-      else if (hue < 75) color = 'Beige';
-      else if (hue < 160) color = 'Green';
-      else if (hue < 260) color = 'Blue';
-      else if (hue < 320) color = 'Red';
-      else color = 'Multicolor';
-    }
-
-    counts[color] += 1;
+    const color = rgbToColor(r, g, b);
+    counts[color] = (counts[color] ?? 0) + 1;
     used += 1;
+    if (color === 'Black' || color === 'Navy' || color === 'Grey') blackish += 1;
   }
 
   if (!used) return 'Multicolor';
 
-  // Pick the top bucket; if it's weak, report multicolor.
   const entries = Object.entries(counts) as Array<[Color, number]>;
   entries.sort((a, b) => b[1] - a[1]);
   const [topColor, topCount] = entries[0];
-  if (topCount < used * 0.35) return 'Multicolor';
+
+  // Black saree + gold border: don't let accents/skin win as Brown.
+  const brownFamily =
+    topColor === 'Brown' || topColor === 'Beige' || topColor === 'Gold';
+  if (brownFamily && blackish >= used * 0.22) {
+    return 'Black';
+  }
+
+  if (topCount < used * 0.28) return 'Multicolor';
   return topColor;
 }

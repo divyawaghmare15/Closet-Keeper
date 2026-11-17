@@ -5,6 +5,15 @@ import { useAuth } from '@/context/AuthContext';
 import { categoriesForGender, OCCASIONS } from '@/lib/constants';
 import type { Category, ClothingItem, Occasion, Outfit } from '@/types';
 
+const PRIMARY_OCCASIONS: Occasion[] = [
+  'Casual',
+  'Office',
+  'Formal',
+  'Festive',
+  'Party',
+  'Travel',
+];
+
 export function OutfitBuilder({
   items,
   onSave,
@@ -16,6 +25,7 @@ export function OutfitBuilder({
   const CATEGORIES = categoriesForGender(gender);
   const [title, setTitle] = useState('');
   const [occasion, setOccasion] = useState<Occasion>('Casual');
+  const [showMoreOccasions, setShowMoreOccasions] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<Category | 'All'>('All');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -36,6 +46,10 @@ export function OutfitBuilder({
         : items.filter((item) => item.category === categoryFilter);
     return [...list].sort((a, b) => a.title.localeCompare(b.title));
   }, [items, categoryFilter]);
+
+  const moreOccasions = OCCASIONS.filter(
+    (value) => !PRIMARY_OCCASIONS.includes(value),
+  );
 
   function toggleItem(id: string) {
     setMessage('');
@@ -89,8 +103,8 @@ export function OutfitBuilder({
 
   if (items.length === 0) {
     return (
-      <div className="rounded-[1.75rem] border border-dashed border-border bg-surface-elevated/70 px-6 py-16 text-center">
-        <p className="font-display text-xl font-semibold">Wardrobe is empty</p>
+      <div className="rounded-[1.75rem] border border-dashed border-border bg-surface-elevated/70 px-5 py-14 text-center sm:px-6 sm:py-16">
+        <p className="font-display text-xl font-semibold">Closet is empty</p>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
           Add a few pieces first, then come back to make an outfit.
         </p>
@@ -99,29 +113,55 @@ export function OutfitBuilder({
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[1.5rem] border border-border/60 bg-surface-elevated p-4 sm:p-5">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1.5">
-            <span className="text-sm font-semibold">Outfit name</span>
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="e.g. Friday office look"
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"
-            />
-          </label>
-          <div className="space-y-1.5">
-            <p className="text-sm font-semibold">Occasion</p>
-            <div className="flex flex-wrap gap-1.5">
-              {OCCASIONS.map((value) => {
+    <div className="space-y-5 pb-24 sm:space-y-6 sm:pb-0">
+      <section className="rounded-[1.5rem] border border-border/60 bg-surface-elevated p-3.5 shadow-sm sm:p-5">
+        <label className="block space-y-1.5">
+          <span className="text-sm font-semibold">Look name</span>
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="e.g. Friday office look"
+            className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-accent"
+          />
+        </label>
+
+        <div className="mt-3 space-y-1.5">
+          <p className="text-sm font-semibold">Occasion</p>
+          <div className="-mx-0.5 flex gap-1.5 overflow-x-auto px-0.5 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
+            {PRIMARY_OCCASIONS.map((value) => {
+              const active = occasion === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setOccasion(value)}
+                  className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold ${
+                    active
+                      ? 'bg-accent text-white'
+                      : 'bg-surface ring-1 ring-border'
+                  }`}
+                >
+                  {value}
+                </button>
+              );
+            })}
+            {!showMoreOccasions ? (
+              <button
+                type="button"
+                onClick={() => setShowMoreOccasions(true)}
+                className="shrink-0 rounded-full bg-surface px-3.5 py-2 text-xs font-semibold text-muted ring-1 ring-border"
+              >
+                More
+              </button>
+            ) : (
+              moreOccasions.map((value) => {
                 const active = occasion === value;
                 return (
                   <button
                     key={value}
                     type="button"
                     onClick={() => setOccasion(value)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                    className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold ${
                       active
                         ? 'bg-accent text-white'
                         : 'bg-surface ring-1 ring-border'
@@ -130,17 +170,17 @@ export function OutfitBuilder({
                     {value}
                   </button>
                 );
-              })}
-            </div>
+              })
+            )}
           </div>
         </div>
 
-        <div className="mt-4">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold">
-              Selected ({selectedItems.length})
-            </p>
-            {selectedItems.length > 0 && (
+        {selectedItems.length > 0 && (
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold">
+                Selected ({selectedItems.length})
+              </p>
               <button
                 type="button"
                 onClick={clearSelection}
@@ -148,16 +188,10 @@ export function OutfitBuilder({
               >
                 Clear
               </button>
-            )}
-          </div>
-          {selectedItems.length === 0 ? (
-            <p className="rounded-xl bg-surface px-3 py-4 text-sm text-muted ring-1 ring-border">
-              Tap items below to build your look.
-            </p>
-          ) : (
-            <ul className="flex gap-2 overflow-x-auto pb-1">
+            </div>
+            <ul className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {selectedItems.map((item) => (
-                <li key={item.id} className="w-20 shrink-0">
+                <li key={item.id} className="w-[4.5rem] shrink-0">
                   <button
                     type="button"
                     onClick={() => toggleItem(item.id)}
@@ -168,41 +202,28 @@ export function OutfitBuilder({
                     <img
                       src={item.imageUrl}
                       alt={item.title}
-                      className="aspect-[3/4] w-full object-contain bg-white"
+                      className="aspect-[3/4] w-full bg-white object-contain"
                     />
                   </button>
-                  <p className="mt-1 truncate text-[11px] text-muted">
-                    {item.category}
-                  </p>
                 </li>
               ))}
             </ul>
-          )}
-        </div>
+          </div>
+        )}
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled={saving || selectedItems.length === 0}
-            onClick={() => void handleSave()}
-            className="rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+        {message && (
+          <p
+            className={`mt-3 text-sm ${
+              message === 'Outfit saved.' ? 'text-accent' : 'text-red-700'
+            }`}
           >
-            {saving ? 'Saving…' : 'Save outfit'}
-          </button>
-          {message && (
-            <p
-              className={`text-sm ${
-                message === 'Outfit saved.' ? 'text-accent' : 'text-red-700'
-              }`}
-            >
-              {message}
-            </p>
-          )}
-        </div>
+            {message}
+          </p>
+        )}
       </section>
 
       <section>
-        <div className="mb-3 flex flex-wrap gap-1.5">
+        <div className="mb-3 -mx-0.5 flex gap-1.5 overflow-x-auto px-0.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <FilterChip
             label="All"
             active={categoryFilter === 'All'}
@@ -218,7 +239,7 @@ export function OutfitBuilder({
           ))}
         </div>
 
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
           {catalog.map((item) => {
             const selected = selectedIds.includes(item.id);
             return (
@@ -226,7 +247,7 @@ export function OutfitBuilder({
                 <button
                   type="button"
                   onClick={() => toggleItem(item.id)}
-                  className={`w-full overflow-hidden rounded-2xl border text-left transition ${
+                  className={`w-full overflow-hidden rounded-2xl border text-left transition active:scale-[0.98] ${
                     selected
                       ? 'border-accent ring-2 ring-accent'
                       : 'border-border/60 hover:border-accent/50'
@@ -245,11 +266,13 @@ export function OutfitBuilder({
                       </span>
                     )}
                   </div>
-                  <div className="space-y-0.5 px-2.5 py-2">
-                    <p className="truncate text-sm font-semibold">{item.title}</p>
-                    <p className="truncate text-xs text-muted">
+                  <div className="space-y-0.5 px-2 py-2 sm:px-2.5">
+                    <p className="truncate text-xs font-semibold sm:text-sm">
+                      {item.title}
+                    </p>
+                    <p className="truncate text-[10px] text-muted sm:text-xs">
                       {item.category}
-                      {!item.isClean ? ' · In wash' : ''}
+                      {!item.isClean ? ' · Wash' : ''}
                     </p>
                   </div>
                 </button>
@@ -258,6 +281,21 @@ export function OutfitBuilder({
           })}
         </ul>
       </section>
+
+      <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 border-t border-border/50 bg-surface-elevated/95 px-3 py-3 backdrop-blur-md sm:static sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+        <button
+          type="button"
+          disabled={saving || selectedItems.length === 0}
+          onClick={() => void handleSave()}
+          className="inline-flex w-full items-center justify-center rounded-2xl bg-accent px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60 sm:w-auto"
+        >
+          {saving
+            ? 'Saving…'
+            : selectedItems.length === 0
+              ? 'Pick pieces to save'
+              : `Save look · ${selectedItems.length}`}
+        </button>
+      </div>
     </div>
   );
 }
@@ -275,7 +313,7 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
         active ? 'bg-accent text-white' : 'bg-surface ring-1 ring-border'
       }`}
     >

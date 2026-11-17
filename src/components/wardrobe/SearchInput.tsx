@@ -28,8 +28,8 @@ export function SearchInput() {
         onChange={(event) =>
           setFilters((prev) => ({ ...prev, searchQuery: event.target.value }))
         }
-        placeholder="Search name, brand, notes, color…"
-        className="w-full rounded-2xl border border-border bg-surface-elevated py-3 pr-4 pl-10 text-sm outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20"
+        placeholder="Search closet…"
+        className="w-full rounded-2xl border border-border bg-surface-elevated py-2.5 pr-4 pl-10 text-sm outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 sm:py-3"
       />
     </label>
   );

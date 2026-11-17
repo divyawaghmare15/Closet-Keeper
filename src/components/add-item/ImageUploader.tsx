@@ -109,7 +109,9 @@ export function ImageUploader({
       }
 
       setBusy('Removing background…');
-      let processed = await removeBackgroundSmart(source);
+      let processed = await removeBackgroundSmart(source, (update) => {
+        if (update.message) setBusy(update.message);
+      });
       processed = await hardenCutoutAlpha(processed);
       processed = await flattenOnWhite(processed);
       const compressed = await compressDataUrl(processed);
@@ -172,7 +174,7 @@ export function ImageUploader({
   }
 
   return (
-    <div className="flex h-full min-h-[280px] flex-col md:min-h-[calc(100svh-11rem)]">
+    <div className="flex h-full min-h-[240px] flex-col sm:min-h-[280px] md:min-h-[calc(100svh-11rem)]">
       <div
         role="button"
         tabIndex={0}
@@ -191,11 +193,11 @@ export function ImageUploader({
         }}
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
-        className={`relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed p-6 transition-colors ${
+        className={`relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[1.5rem] border-2 border-dashed p-5 transition-colors sm:p-6 ${
           isDragOver
-            ? 'border-purple-400 bg-purple-50'
-            : 'border-slate-300 bg-slate-50 hover:bg-purple-50'
-        } ${imageUrl ? 'cursor-default' : ''}`}
+            ? 'border-accent bg-accent-soft/60'
+            : 'border-border/80 bg-surface-elevated hover:border-accent/40 hover:bg-accent-soft/30'
+        } ${imageUrl ? 'min-h-[260px] cursor-default sm:min-h-[320px]' : 'min-h-[220px]'}`}
       >
         {imageUrl ? (
           <>
@@ -203,9 +205,9 @@ export function ImageUploader({
             <img
               src={imageUrl}
               alt="Selected clothing preview"
-              className="absolute inset-0 h-full w-full object-contain p-4"
+              className="absolute inset-0 h-full w-full object-contain p-3 sm:p-4"
             />
-            <div className="absolute right-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap justify-end gap-2">
+            <div className="absolute right-2.5 top-2.5 flex max-w-[calc(100%-1.25rem)] flex-wrap justify-end gap-1.5 sm:right-3 sm:top-3 sm:gap-2">
               {originalRaw && (
                 <button
                   type="button"
@@ -214,7 +216,7 @@ export function ImageUploader({
                     reCrop();
                   }}
                   disabled={Boolean(busy)}
-                  className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60"
+                  className="rounded-xl bg-white/95 px-2.5 py-1.5 text-[11px] font-semibold text-foreground shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60 sm:px-3 sm:text-xs"
                 >
                   Re-crop
                 </button>
@@ -227,7 +229,7 @@ export function ImageUploader({
                     undoBackground();
                   }}
                   disabled={Boolean(busy)}
-                  className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60"
+                  className="rounded-xl bg-white/95 px-2.5 py-1.5 text-[11px] font-semibold text-foreground shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60 sm:px-3 sm:text-xs"
                 >
                   Undo BG
                 </button>
@@ -239,7 +241,7 @@ export function ImageUploader({
                     void removeBackgroundNow();
                   }}
                   disabled={Boolean(busy)}
-                  className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-accent shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60"
+                  className="rounded-xl bg-white/95 px-2.5 py-1.5 text-[11px] font-semibold text-accent shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60 sm:px-3 sm:text-xs"
                 >
                   Remove BG
                 </button>
@@ -252,31 +254,47 @@ export function ImageUploader({
                 }}
                 disabled={Boolean(busy)}
                 aria-label="Delete photo"
-                className="rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-red-700 shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60"
+                className="rounded-xl bg-white/95 px-2.5 py-1.5 text-[11px] font-semibold text-red-700 shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60 sm:px-3 sm:text-xs"
               >
-                Remove
+                Clear
               </button>
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-accent shadow-sm ring-1 ring-purple-100">
+          <div className="flex w-full max-w-sm flex-col items-center text-center">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-accent-soft text-accent sm:size-14">
               <HangerIcon />
             </div>
-            <p className="mt-4 max-w-xs text-sm font-bold text-foreground">
-              Drag &amp; drop clothing photo, or click to browse
+            <p className="mt-3 font-display text-lg font-semibold text-foreground sm:mt-4 sm:text-xl">
+              Add a photo
             </p>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                cameraInputRef.current?.click();
-              }}
-              disabled={Boolean(busy)}
-              className="mt-3 text-sm font-semibold text-accent underline-offset-2 hover:underline disabled:opacity-60"
-            >
-              📷 Use Camera
-            </button>
+            <p className="mt-1 hidden text-sm text-muted sm:block">
+              Drag &amp; drop, or pick from your library
+            </p>
+            <div className="mt-4 grid w-full grid-cols-2 gap-2 sm:mt-5">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  cameraInputRef.current?.click();
+                }}
+                disabled={Boolean(busy)}
+                className="rounded-2xl bg-accent px-3 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
+              >
+                Camera
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openGallery();
+                }}
+                disabled={Boolean(busy)}
+                className="rounded-2xl border border-border/70 bg-surface-elevated px-3 py-3 text-sm font-semibold text-foreground transition hover:bg-accent-soft/50 active:scale-[0.98] disabled:opacity-60"
+              >
+                Gallery
+              </button>
+            </div>
           </div>
         )}
 

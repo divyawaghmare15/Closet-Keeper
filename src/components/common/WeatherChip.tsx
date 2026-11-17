@@ -7,8 +7,10 @@ import type { Season } from '@/types';
 
 export function WeatherChip({
   onSeasonHint,
+  variant = 'default',
 }: {
   onSeasonHint?: (season: Season | 'Any') => void;
+  variant?: 'default' | 'compact';
 }) {
   const [weather, setWeather] = useState<WeatherSnapshot | null>(null);
   const [error, setError] = useState('');
@@ -39,7 +41,7 @@ export function WeatherChip({
 
   if (loading && !weather) {
     return (
-      <p className="text-sm text-muted">Checking today’s weather…</p>
+      <p className="text-sm text-muted">Checking today&apos;s weather…</p>
     );
   }
 
@@ -61,6 +63,25 @@ export function WeatherChip({
     weather.suggestedSeason === 'Any'
       ? 'Casual'
       : weather.suggestedSeason;
+
+  if (variant === 'compact') {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-surface-elevated/90 px-3 py-1.5 text-sm shadow-sm">
+          <span className="font-semibold text-foreground">
+            {weather.tempC}°C
+          </span>
+          <span className="text-muted">{weather.label}</span>
+        </span>
+        <Link
+          href={`/generator?occasion=Casual&season=${encodeURIComponent(String(weather.suggestedSeason))}`}
+          className="text-sm font-semibold text-accent"
+        >
+          Dress for {seasonParam}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-2">

@@ -8,7 +8,7 @@ const NAV_ITEMS = [
     href: '/',
     label: 'Home',
     icon: (
-      <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
+      <svg viewBox="0 0 24 24" className="size-[22px]" fill="none" aria-hidden>
         <path
           d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z"
           stroke="currentColor"
@@ -22,7 +22,7 @@ const NAV_ITEMS = [
     href: '/wardrobe',
     label: 'Closet',
     icon: (
-      <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
+      <svg viewBox="0 0 24 24" className="size-[22px]" fill="none" aria-hidden>
         <path
           d="M6 4h12a1 1 0 0 1 1 1v15H5V5a1 1 0 0 1 1-1Z"
           stroke="currentColor"
@@ -40,12 +40,13 @@ const NAV_ITEMS = [
   {
     href: '/add-item',
     label: 'Add',
+    prominent: true,
     icon: (
-      <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
+      <svg viewBox="0 0 24 24" className="size-6" fill="none" aria-hidden>
         <path
           d="M12 5v14M5 12h14"
           stroke="currentColor"
-          strokeWidth="1.75"
+          strokeWidth="2"
           strokeLinecap="round"
         />
       </svg>
@@ -55,7 +56,7 @@ const NAV_ITEMS = [
     href: '/generator',
     label: 'Looks',
     icon: (
-      <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
+      <svg viewBox="0 0 24 24" className="size-[22px]" fill="none" aria-hidden>
         <path
           d="M8 4h8l2 4-6 11L6 8l2-4Z"
           stroke="currentColor"
@@ -72,54 +73,10 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/misc',
-    label: 'Extras',
-    icon: (
-      <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
-        <rect
-          x="4"
-          y="5"
-          width="7"
-          height="7"
-          rx="1.5"
-          stroke="currentColor"
-          strokeWidth="1.75"
-        />
-        <rect
-          x="13"
-          y="5"
-          width="7"
-          height="7"
-          rx="1.5"
-          stroke="currentColor"
-          strokeWidth="1.75"
-        />
-        <rect
-          x="4"
-          y="14"
-          width="7"
-          height="5"
-          rx="1.5"
-          stroke="currentColor"
-          strokeWidth="1.75"
-        />
-        <rect
-          x="13"
-          y="14"
-          width="7"
-          height="5"
-          rx="1.5"
-          stroke="currentColor"
-          strokeWidth="1.75"
-        />
-      </svg>
-    ),
-  },
-  {
     href: '/profile',
-    label: 'Profile',
+    label: 'You',
     icon: (
-      <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
+      <svg viewBox="0 0 24 24" className="size-[22px]" fill="none" aria-hidden>
         <circle cx="12" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.75" />
         <path
           d="M5.5 19.5c1.6-3.2 4-4.75 6.5-4.75s4.9 1.55 6.5 4.75"
@@ -140,8 +97,10 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-surface-elevated/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
       aria-label="Mobile"
     >
-      <ul className="mx-auto flex h-16 max-w-3xl items-stretch justify-around px-1 sm:px-2">
-        {NAV_ITEMS.map(({ href, label, icon }) => {
+      <ul className="mx-auto flex h-[4.25rem] max-w-3xl items-stretch justify-around px-2">
+        {NAV_ITEMS.map((item) => {
+          const { href, label, icon } = item;
+          const prominent = 'prominent' in item && item.prominent;
           const active =
             href === '/' ? pathname === '/' : pathname.startsWith(href);
 
@@ -149,18 +108,30 @@ export function BottomNav() {
             <li key={href} className="min-w-0 flex-1">
               <Link
                 href={href}
-                className={`flex h-full flex-col items-center justify-center gap-0.5 px-0.5 text-[10px] font-semibold transition sm:text-[11px] ${
-                  active ? 'text-accent' : 'text-muted hover:text-foreground'
+                className={`flex h-full flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold transition ${
+                  active ? 'text-accent' : 'text-muted'
                 }`}
               >
-                <span
-                  className={`rounded-xl p-1 sm:p-1.5 ${
-                    active ? 'bg-accent-soft text-accent' : ''
-                  }`}
-                >
-                  {icon}
+                {prominent ? (
+                  <span
+                    className={`-mt-5 flex size-12 items-center justify-center rounded-2xl text-white shadow-md shadow-accent/30 ${
+                      active ? 'bg-accent brightness-110' : 'bg-accent'
+                    }`}
+                  >
+                    {icon}
+                  </span>
+                ) : (
+                  <span
+                    className={`rounded-xl p-1.5 ${
+                      active ? 'bg-accent-soft text-accent' : ''
+                    }`}
+                  >
+                    {icon}
+                  </span>
+                )}
+                <span className={`truncate ${prominent ? 'mt-0.5' : ''}`}>
+                  {label}
                 </span>
-                <span className="truncate">{label}</span>
               </Link>
             </li>
           );

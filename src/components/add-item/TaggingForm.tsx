@@ -194,7 +194,7 @@ export function TaggingForm() {
 
       <ModeToggle mode={mode} onChange={setMode} />
 
-      <div className="mt-4 grid grid-cols-1 gap-8 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
         <div className="min-h-0 min-w-0">
           <ImageUploader
             imageUrl={imageUrl}
@@ -225,10 +225,21 @@ export function TaggingForm() {
           />
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-col">
-          <div className="space-y-3 sm:space-y-3.5">
+        <div
+          className={`flex min-h-0 min-w-0 flex-col ${
+            imageUrl ? '' : 'pointer-events-none opacity-45'
+          }`}
+        >
+          <div className="mb-3 flex items-center justify-between gap-2 md:hidden">
+            <p className="text-sm font-semibold text-foreground">Tags</p>
+            <p className="text-xs text-muted">
+              {imageUrl ? 'Edit anything before saving' : 'Add a photo first'}
+            </p>
+          </div>
+
+          <div className="space-y-3.5 rounded-[1.25rem] border border-border/50 bg-surface-elevated/80 p-3.5 sm:space-y-3.5 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
             <label className="block space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+              <span className="text-xs font-semibold tracking-wide text-muted uppercase">
                 Title
               </span>
               <input
@@ -236,13 +247,13 @@ export function TaggingForm() {
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder={autoTitlePlaceholder}
-                className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+                className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
             </label>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                <span className="text-xs font-semibold tracking-wide text-muted uppercase">
                   Category
                 </span>
                 <label
@@ -260,10 +271,10 @@ export function TaggingForm() {
                     checked={isClean}
                     onChange={(event) => setIsClean(event.target.checked)}
                   />
-                  {isClean ? '✓ Clean' : 'In wash'}
+                  {isClean ? 'Clean' : 'In wash'}
                 </label>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
                 {CATEGORIES.map((value) => {
                   const active = category === value;
                   return (
@@ -288,14 +299,14 @@ export function TaggingForm() {
             </div>
 
             <div className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+              <span className="text-xs font-semibold tracking-wide text-muted uppercase">
                 Color
               </span>
               <ColorPicker value={color} onChange={setColor} />
             </div>
 
             <div className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+              <span className="text-xs font-semibold tracking-wide text-muted uppercase">
                 Occasions
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -328,9 +339,12 @@ export function TaggingForm() {
               </div>
             </div>
 
-            <details className="group rounded-xl border border-border/60 bg-surface/40">
+            <details className="group rounded-xl border border-border/60 bg-surface/50">
               <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-foreground marker:content-none [&::-webkit-details-marker]:hidden">
-                ➕ Add more details (Brand, Size, Price…)
+                More details
+                <span className="ml-1.5 font-normal text-muted">
+                  Brand, size, price
+                </span>
               </summary>
               <div className="space-y-3 border-t border-border/40 px-3 py-3">
                 <label className="block space-y-1">
@@ -405,30 +419,32 @@ export function TaggingForm() {
             </details>
           </div>
 
-          <div className="sticky bottom-0 z-10 mt-3 shrink-0 space-y-2 border-t border-border/40 bg-surface-elevated/95 pt-3 pb-1 backdrop-blur-sm">
-            {error && (
-              <p
-                className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={saving || autoTagging || !imageUrl}
-              aria-busy={saving}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {saving && (
-                <span
-                  className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
-                  aria-hidden
-                />
+          <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 border-t border-border/50 bg-surface-elevated/95 px-3 py-3 backdrop-blur-md sm:static sm:mt-4 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+            <div className="mx-auto w-full max-w-6xl space-y-2 lg:max-w-none">
+              {error && (
+                <p
+                  className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700"
+                  role="alert"
+                >
+                  {error}
+                </p>
               )}
-              {saving ? 'Saving…' : 'Save to wardrobe'}
-            </button>
+
+              <button
+                type="submit"
+                disabled={saving || autoTagging || !imageUrl}
+                aria-busy={saving}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent py-3.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {saving && (
+                  <span
+                    className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                    aria-hidden
+                  />
+                )}
+                {saving ? 'Saving…' : 'Save to closet'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -468,25 +484,32 @@ function ModeToggle({
   onChange: (mode: 'single' | 'bulk') => void;
 }) {
   return (
-    <div className="flex rounded-2xl bg-surface p-1 ring-1 ring-border">
-      <button
-        type="button"
-        onClick={() => onChange('single')}
-        className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-          mode === 'single' ? 'bg-accent text-white' : 'text-muted'
-        }`}
-      >
-        Single item
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange('bulk')}
-        className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-          mode === 'bulk' ? 'bg-accent text-white' : 'text-muted'
-        }`}
-      >
-        Bulk import
-      </button>
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex rounded-2xl bg-surface p-1 ring-1 ring-border">
+        <button
+          type="button"
+          onClick={() => onChange('single')}
+          className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
+            mode === 'single' ? 'bg-accent text-white' : 'text-muted'
+          }`}
+        >
+          One piece
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange('bulk')}
+          className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
+            mode === 'bulk' ? 'bg-accent text-white' : 'text-muted'
+          }`}
+        >
+          Bulk
+        </button>
+      </div>
+      <p className="hidden text-xs text-muted sm:block">
+        {mode === 'bulk'
+          ? 'Import many photos at once'
+          : 'Best for everyday adds'}
+      </p>
     </div>
   );
 }

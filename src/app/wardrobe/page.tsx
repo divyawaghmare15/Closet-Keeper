@@ -8,18 +8,14 @@ import { useWardrobe } from '@/context/WardrobeContext';
 
 function SkeletonCard() {
   return (
-    <div className="overflow-hidden rounded-[1.5rem] border border-border/60 bg-surface-elevated">
-      <div className="aspect-[4/5] animate-pulse bg-accent-soft/40" />
-      <div className="space-y-2.5 p-4">
-        <div className="h-4 w-3/4 animate-pulse rounded-full bg-border/60" />
+    <div className="overflow-hidden rounded-2xl border border-border/60 bg-surface-elevated sm:rounded-[1.5rem]">
+      <div className="aspect-[3/4] animate-pulse bg-accent-soft/40 sm:aspect-[4/5]" />
+      <div className="space-y-2 p-2.5 sm:space-y-2.5 sm:p-4">
+        <div className="h-3.5 w-3/4 animate-pulse rounded-full bg-border/60 sm:h-4" />
         <div className="h-3 w-1/2 animate-pulse rounded-full bg-border/40" />
-        <div className="flex gap-1.5">
-          <div className="h-6 w-14 animate-pulse rounded-full bg-border/40" />
-          <div className="h-6 w-12 animate-pulse rounded-full bg-border/40" />
-        </div>
-        <div className="flex gap-2 pt-1">
-          <div className="h-9 flex-1 animate-pulse rounded-xl bg-border/40" />
-          <div className="h-9 w-14 animate-pulse rounded-xl bg-border/40" />
+        <div className="flex gap-1.5 pt-1">
+          <div className="h-8 flex-1 animate-pulse rounded-xl bg-border/40" />
+          <div className="h-8 w-12 animate-pulse rounded-xl bg-border/40" />
         </div>
       </div>
     </div>
@@ -28,7 +24,7 @@ function SkeletonCard() {
 
 function SkeletonGrid() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <SkeletonCard key={i} />
       ))}
@@ -56,30 +52,35 @@ export default function WardrobePage() {
   }, [setFilters]);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
-      <div className="animate-fade-up mb-8">
-        <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-          {filters.cleanStatus === 'laundry' ? 'Laundry' : 'Your wardrobe'}
-        </h1>
-        <p className="mt-2 text-sm text-muted sm:text-base">
-          {loading
-            ? 'Loading…'
-            : `${filteredItems.length} shown${
-                filteredItems.length !== items.length
-                  ? ` of ${items.length}`
-                  : ''
-              }`}
-          {cloudEnabled ? ' · cloud sync' : ' · local only'}
-        </p>
-        {error && (
-          <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
+    <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+      <div className="animate-fade-up mb-4 flex items-end justify-between gap-3 sm:mb-8">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-4xl">
+            {filters.cleanStatus === 'laundry' ? 'Laundry' : 'Closet'}
+          </h1>
+          <p className="mt-1 text-xs text-muted sm:mt-2 sm:text-base">
+            {loading
+              ? 'Loading…'
+              : `${filteredItems.length}${
+                  filteredItems.length !== items.length
+                    ? ` of ${items.length}`
+                    : ''
+                } pieces`}
+            <span className="hidden sm:inline">
+              {cloudEnabled ? ' · cloud sync' : ' · local only'}
+            </span>
           </p>
-        )}
+        </div>
       </div>
 
+      {error && (
+        <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
       <div
-        className="animate-fade-up mb-6 space-y-5"
+        className="animate-fade-up sticky top-0 z-20 -mx-3 mb-3 space-y-2.5 border-b border-border/40 bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] px-3 py-2.5 backdrop-blur-md sm:static sm:mx-0 sm:mb-6 sm:space-y-5 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none"
         style={{ animationDelay: '60ms' }}
       >
         <SearchInput />

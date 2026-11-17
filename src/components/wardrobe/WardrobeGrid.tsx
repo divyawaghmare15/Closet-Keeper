@@ -43,12 +43,12 @@ export function WardrobeGrid() {
 
   return (
     <>
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
         {filteredItems.map((item, index) => (
           <li
             key={item.id}
             className="animate-fade-up"
-            style={{ animationDelay: `${index * 40}ms` }}
+            style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
           >
             <ItemCard
               item={item}
