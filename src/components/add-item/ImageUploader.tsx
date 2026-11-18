@@ -3,14 +3,7 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ImageCropper } from '@/components/add-item/ImageCropper';
-import {
-  compressDataUrl,
-  cropDataUrl,
-  fileToDataUrl,
-  flattenOnWhite,
-  hardenCutoutAlpha,
-  removeBackgroundSmart,
-} from '@/lib/imageProcess';
+import { compressDataUrl, cropDataUrl, fileToDataUrl } from '@/lib/imageProcess';
 
 export function ImageUploader({
   imageUrl,
@@ -18,24 +11,17 @@ export function ImageUploader({
   onProcessed,
   multiple = false,
   onMultiple,
-  autoRemoveBackground,
-  onAutoRemoveBackgroundChange,
 }: {
   imageUrl: string;
   onChange: (dataUrl: string) => void;
   onProcessed?: (dataUrl: string) => void;
   multiple?: boolean;
   onMultiple?: (files: File[]) => void;
-  autoRemoveBackground: boolean;
-  onAutoRemoveBackgroundChange: (value: boolean) => void;
 }) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [pendingRaw, setPendingRaw] = useState('');
   const [originalRaw, setOriginalRaw] = useState('');
-  /** Cropped/original photo before background removal (for Undo BG). */
-  const [preBgUrl, setPreBgUrl] = useState('');
-  const [bgApplied, setBgApplied] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
@@ -43,8 +29,6 @@ export function ImageUploader({
   async function beginWithFile(file: File) {
     if (!file.type.startsWith('image/')) return;
     setError('');
-    setPreBgUrl('');
-    setBgApplied(false);
     const dataUrl = await fileToDataUrl(file);
     setOriginalRaw(dataUrl);
     setPendingRaw(dataUrl);
@@ -81,8 +65,6 @@ export function ImageUploader({
     setError('');
     setPendingRaw('');
     setOriginalRaw('');
-    setPreBgUrl('');
-    setBgApplied(false);
     onChange('');
   }
 
@@ -91,31 +73,10 @@ export function ImageUploader({
     setPendingRaw(originalRaw);
   }
 
-  async function finishProcessed(
-    source: string,
-    options?: { removeBackground?: boolean },
-  ) {
-    const shouldRemove = options?.removeBackground ?? autoRemoveBackground;
+  async function finishProcessed(source: string) {
     try {
-      const originalCompressed = await compressDataUrl(source);
-      setPreBgUrl(originalCompressed);
-
-      if (!shouldRemove) {
-        setBusy('Saving photo…');
-        setBgApplied(false);
-        onChange(originalCompressed);
-        onProcessed?.(originalCompressed);
-        return;
-      }
-
-      setBusy('Removing background…');
-      let processed = await removeBackgroundSmart(source, (update) => {
-        if (update.message) setBusy(update.message);
-      });
-      processed = await hardenCutoutAlpha(processed);
-      processed = await flattenOnWhite(processed);
-      const compressed = await compressDataUrl(processed);
-      setBgApplied(true);
+      setBusy('Saving photo…');
+      const compressed = await compressDataUrl(source);
       onChange(compressed);
       onProcessed?.(compressed);
     } catch (err) {
@@ -151,22 +112,6 @@ export function ImageUploader({
       setError(err instanceof Error ? err.message : 'Could not process photo');
       setBusy('');
     }
-  }
-
-  async function removeBackgroundNow() {
-    if (busy) return;
-    const source = preBgUrl || imageUrl;
-    if (!source) return;
-    await finishProcessed(source, { removeBackground: true });
-  }
-
-  function undoBackground() {
-    if (!preBgUrl || busy) return;
-    setError('');
-    setBgApplied(false);
-    onAutoRemoveBackgroundChange(false);
-    onChange(preBgUrl);
-    onProcessed?.(preBgUrl);
   }
 
   function openGallery() {
@@ -219,31 +164,6 @@ export function ImageUploader({
                   className="rounded-xl bg-white/95 px-2.5 py-1.5 text-[11px] font-semibold text-foreground shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60 sm:px-3 sm:text-xs"
                 >
                   Re-crop
-                </button>
-              )}
-              {bgApplied && preBgUrl ? (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    undoBackground();
-                  }}
-                  disabled={Boolean(busy)}
-                  className="rounded-xl bg-white/95 px-2.5 py-1.5 text-[11px] font-semibold text-foreground shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60 sm:px-3 sm:text-xs"
-                >
-                  Undo BG
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void removeBackgroundNow();
-                  }}
-                  disabled={Boolean(busy)}
-                  className="rounded-xl bg-white/95 px-2.5 py-1.5 text-[11px] font-semibold text-accent shadow-sm ring-1 ring-border/60 backdrop-blur-sm disabled:opacity-60 sm:px-3 sm:text-xs"
-                >
-                  Remove BG
                 </button>
               )}
               <button
@@ -305,53 +225,6 @@ export function ImageUploader({
         )}
       </div>
 
-      <div className="mt-3 space-y-1.5">
-        <button
-          type="button"
-          onClick={() => onAutoRemoveBackgroundChange(!autoRemoveBackground)}
-          className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left transition ${
-            autoRemoveBackground
-              ? 'border-accent/40 bg-accent-soft/70'
-              : 'border-border/70 bg-surface'
-          }`}
-        >
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">
-              {autoRemoveBackground
-                ? 'Remove background after crop'
-                : 'Keep original photo (crop only)'}
-            </p>
-            <p className="mt-0.5 text-xs text-muted">
-              {autoRemoveBackground
-                ? 'Background will be removed after you crop. You can Undo BG afterward.'
-                : 'Default: crop and keep colors as-is. Turn on only if you want a cutout.'}
-            </p>
-          </div>
-          <span
-            className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
-              autoRemoveBackground ? 'bg-accent' : 'bg-border'
-            }`}
-            aria-hidden
-          >
-            <span
-              className={`absolute left-0.5 size-6 rounded-full bg-white shadow transition ${
-                autoRemoveBackground ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </span>
-        </button>
-        {bgApplied && (
-          <button
-            type="button"
-            onClick={undoBackground}
-            disabled={Boolean(busy) || !preBgUrl}
-            className="w-full rounded-2xl border border-border/70 bg-surface px-3.5 py-2.5 text-left text-sm font-semibold text-foreground transition hover:bg-accent-soft/50 disabled:opacity-60"
-          >
-            Restore original photo (undo background removal)
-          </button>
-        )}
-      </div>
-
       {error && (
         <p className="mt-2 text-sm text-red-700" role="alert">
           {error}
@@ -379,7 +252,6 @@ export function ImageUploader({
         createPortal(
           <ImageCropper
             imageUrl={pendingRaw}
-            removeBackgroundHint={autoRemoveBackground}
             onCancel={() => setPendingRaw('')}
             onSkip={() => {
               void skipCropAndProcess();

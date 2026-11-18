@@ -46,10 +46,6 @@ export function TaggingForm() {
   const [showMoreOccasions, setShowMoreOccasions] = useState(false);
   const [isClean, setIsClean] = useState(true);
   const [imageUrl, setImageUrl] = useState('');
-  const [autoRemoveBackground, setAutoRemoveBackground] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('ck_auto_remove_bg') === '1';
-  });
   const [brand, setBrand] = useState('');
   const [size, setSize] = useState<Size>('');
   const [season, setSeason] = useState<Season>('All-Season');
@@ -198,11 +194,6 @@ export function TaggingForm() {
         <div className="min-h-0 min-w-0">
           <ImageUploader
             imageUrl={imageUrl}
-            autoRemoveBackground={autoRemoveBackground}
-            onAutoRemoveBackgroundChange={(value) => {
-              setAutoRemoveBackground(value);
-              localStorage.setItem('ck_auto_remove_bg', value ? '1' : '0');
-            }}
             onChange={(url) => {
               setImageUrl(url);
               if (!url) {

@@ -20,7 +20,6 @@ export function ImageCropper({
   onCancel,
   onSkip,
   onConfirm,
-  removeBackgroundHint = false,
 }: {
   imageUrl: string;
   onCancel: () => void;
@@ -31,8 +30,6 @@ export function ImageCropper({
     width: number;
     height: number;
   }) => void;
-  /** When true, crop confirm will also remove background. */
-  removeBackgroundHint?: boolean;
 }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const [natural, setNatural] = useState({ width: 0, height: 0 });
@@ -250,11 +247,6 @@ export function ImageCropper({
 
       {/* Footer */}
       <div className="flex shrink-0 flex-col gap-2 px-4 py-3 sm:items-center sm:px-5 sm:py-4">
-        <p className="text-center text-xs text-white/70">
-          {removeBackgroundHint
-            ? 'Next: background will be removed'
-            : 'Next: keep original photo (crop only)'}
-        </p>
         <div className="flex w-full gap-3 sm:justify-center">
           <button
             type="button"

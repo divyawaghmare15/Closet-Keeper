@@ -4,14 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useWardrobe } from '@/context/WardrobeContext';
-import {
-  compressDataUrl,
-  fileToDataUrl,
-  flattenOnWhite,
-  hardenCutoutAlpha,
-  removeBackgroundSmart,
-  toProcessableDataUrl,
-} from '@/lib/imageProcess';
+import { compressDataUrl, fileToDataUrl } from '@/lib/imageProcess';
 import {
   categoriesForGender,
   OCCASIONS,
@@ -41,8 +34,6 @@ export function EditItemSheet({
 
   const [title, setTitle] = useState(item.title);
   const [imageUrl, setImageUrl] = useState(item.imageUrl);
-  const [originalPhotoUrl, setOriginalPhotoUrl] = useState(item.imageUrl);
-  const [bgApplied, setBgApplied] = useState(false);
   const [category, setCategory] = useState<Category>(item.category);
   const [color, setColor] = useState<Color>(item.color);
   const [occasions, setOccasions] = useState<Occasion[]>(item.occasions);
@@ -79,50 +70,12 @@ export function EditItemSheet({
       const dataUrl = await fileToDataUrl(file);
       const compressed = await compressDataUrl(dataUrl);
       setImageUrl(compressed);
-      setOriginalPhotoUrl(compressed);
-      setBgApplied(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update photo');
     } finally {
       setPhotoBusy(false);
       setPhotoStatus('');
     }
-  }
-
-  async function handleRemoveBackground() {
-    if (photoBusy || saving) return;
-    setPhotoBusy(true);
-    setPhotoStatus('Preparing photo…');
-    setError('');
-    try {
-      const sourceUrl = bgApplied ? originalPhotoUrl : imageUrl;
-      if (!bgApplied) setOriginalPhotoUrl(imageUrl);
-
-      const dataUrl = await toProcessableDataUrl(sourceUrl);
-      let processed = await removeBackgroundSmart(dataUrl, (update) => {
-        if (update.message) setPhotoStatus(update.message);
-      });
-      setPhotoStatus('Finishing cutout…');
-      processed = await hardenCutoutAlpha(processed);
-      processed = await flattenOnWhite(processed);
-      processed = await compressDataUrl(processed);
-      setImageUrl(processed);
-      setBgApplied(true);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not remove background',
-      );
-    } finally {
-      setPhotoBusy(false);
-      setPhotoStatus('');
-    }
-  }
-
-  function handleUndoBackground() {
-    if (!originalPhotoUrl || photoBusy) return;
-    setImageUrl(originalPhotoUrl);
-    setBgApplied(false);
-    setError('');
   }
 
   async function handleSave() {
@@ -222,30 +175,7 @@ export function EditItemSheet({
                     }}
                   />
                 </label>
-                {bgApplied ? (
-                  <button
-                    type="button"
-                    onClick={handleUndoBackground}
-                    disabled={photoBusy || saving}
-                    className="inline-flex items-center justify-center rounded-xl bg-surface px-3 py-2.5 text-sm font-semibold ring-1 ring-border transition hover:bg-accent-soft disabled:opacity-60"
-                  >
-                    Undo BG
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void handleRemoveBackground()}
-                    disabled={photoBusy || saving || !imageUrl}
-                    className="inline-flex items-center justify-center rounded-xl bg-accent px-3 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
-                  >
-                    Remove BG
-                  </button>
-                )}
               </div>
-              <p className="text-xs text-muted">
-                Tap <span className="font-semibold text-foreground">Remove BG</span> under
-                the photo, then Save changes to keep it.
-              </p>
             </div>
 
             <label className="block space-y-1.5">
