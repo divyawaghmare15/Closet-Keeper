@@ -78,6 +78,15 @@ export function EditItemSheet({
     }
   }
 
+  const savedImageUrl = item.imageUrl;
+  const photoChanged = imageUrl !== savedImageUrl;
+
+  function keepOriginalPhoto() {
+    if (!photoChanged || photoBusy || saving) return;
+    setImageUrl(savedImageUrl);
+    setError('');
+  }
+
   async function handleSave() {
     if (!title.trim()) {
       setError('Title is required.');
@@ -175,7 +184,20 @@ export function EditItemSheet({
                     }}
                   />
                 </label>
+                <button
+                  type="button"
+                  onClick={keepOriginalPhoto}
+                  disabled={!photoChanged || photoBusy || saving}
+                  className="inline-flex items-center justify-center rounded-xl bg-surface px-3 py-2.5 text-sm font-semibold ring-1 ring-border transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Keep original
+                </button>
               </div>
+              <p className="text-xs text-muted">
+                {photoChanged
+                  ? 'Keep original restores the saved photo, including its background.'
+                  : 'This is the saved photo, background included.'}
+              </p>
             </div>
 
             <label className="block space-y-1.5">
